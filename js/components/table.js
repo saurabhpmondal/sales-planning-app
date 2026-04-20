@@ -124,35 +124,35 @@ function w(c) {
   if (
     /^d\d+$/.test(k)
   )
-    return 30;
+    return 20;
 
   if (
     k.includes(
       "style"
     )
   )
-    return 78;
+    return 58;
 
   if (
     k.includes(
       "sku"
     )
   )
-    return 82;
+    return 62;
 
   if (
     k.includes(
       "brand"
     )
   )
-    return 86;
+    return 66;
 
   if (
     k.includes(
       "status"
     )
   )
-    return 88;
+    return 68;
 
   if (
     k.includes(
@@ -162,28 +162,28 @@ function w(c) {
       "range"
     )
   )
-    return 72;
+    return 52;
 
   if (
     k.includes(
       "gmv"
     )
   )
-    return 78;
+    return 58;
 
   if (
     k.includes(
       "asp"
     )
   )
-    return 60;
+    return 40;
 
   if (
     k.includes(
       "unit"
     )
   )
-    return 56;
+    return 36;
 
   if (
     k.includes(
@@ -196,7 +196,7 @@ function w(c) {
       "atc"
     )
   )
-    return 56;
+    return 36;
 
   if (
     k.includes(
@@ -215,7 +215,7 @@ function w(c) {
       "ret"
     )
   )
-    return 54;
+    return 34;
 
   if (
     k.includes(
@@ -223,9 +223,9 @@ function w(c) {
     ) ||
     k === "#"
   )
-    return 38;
+    return 18;
 
-  return 62;
+  return 42;
 }
 
 /* ----------------------------------- */
