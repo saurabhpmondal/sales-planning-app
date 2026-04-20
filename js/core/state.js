@@ -2,7 +2,9 @@
 // FILE: js/core/state.js
 
 /* -----------------------------------
-   GLOBAL APP STATE
+   GLOBAL STATE
+   FIX:
+   Initial month truly applied
 ----------------------------------- */
 
 export const APP_STATE = {
@@ -21,8 +23,7 @@ export const APP_STATE = {
   },
 
   ui: {
-    loading: true,
-    mobile: false
+    loading: true
   }
 };
 
@@ -35,15 +36,45 @@ export function getActiveTab() {
 }
 
 export function setActiveTab(
-  tabId
+  tab
 ) {
   APP_STATE.activeTab =
-    tabId;
+    tab;
 }
 
 /* -----------------------------------
    FILTERS
 ----------------------------------- */
+
+export function setFilter(
+  key,
+  value
+) {
+  APP_STATE.filters[
+    key
+  ] = value;
+}
+
+export function setFilters(
+  obj = {}
+) {
+  APP_STATE.filters = {
+    ...APP_STATE.filters,
+    ...obj
+  };
+}
+
+export function resetFilters() {
+  APP_STATE.filters = {
+    month:
+      resolveAutoMonth(),
+    startDate: "",
+    endDate: "",
+    brand: "ALL",
+    poType: "ALL",
+    search: ""
+  };
+}
 
 export function getFilters() {
   const out = {
@@ -61,38 +92,8 @@ export function getFilters() {
   return out;
 }
 
-export function setFilter(
-  key,
-  value
-) {
-  APP_STATE.filters[
-    key
-  ] = value;
-}
-
-/* compatibility */
-export function setFilters(
-  payload = {}
-) {
-  APP_STATE.filters = {
-    ...APP_STATE.filters,
-    ...payload
-  };
-}
-
-export function resetFilters() {
-  APP_STATE.filters = {
-    month: "AUTO",
-    startDate: "",
-    endDate: "",
-    brand: "ALL",
-    poType: "ALL",
-    search: ""
-  };
-}
-
 /* -----------------------------------
-   HELPERS
+   AUTO MONTH
 ----------------------------------- */
 
 export function resolveAutoMonth() {
@@ -105,4 +106,13 @@ export function resolveAutoMonth() {
     months[0] ||
     "ALL"
   );
+}
+
+/* -----------------------------------
+   AFTER STORE LOAD
+----------------------------------- */
+
+export function hydrateInitialFilters() {
+  APP_STATE.filters.month =
+    resolveAutoMonth();
 }
