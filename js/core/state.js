@@ -6,31 +6,20 @@
 ----------------------------------- */
 
 export const APP_STATE = {
-  /* central store */
   store: null,
 
-  /* default active tab */
   activeTab:
     "dashboard",
 
-  /* dynamic filters */
   filters: {
-    /* auto set after load */
     month: "AUTO",
-
-    /* custom day range */
     startDate: "",
     endDate: "",
-
-    /* dropdowns */
     brand: "ALL",
     poType: "ALL",
-
-    /* style / sku search */
     search: ""
   },
 
-  /* ui helpers */
   ui: {
     loading: true,
     mobile: false
@@ -38,13 +27,11 @@ export const APP_STATE = {
 };
 
 /* -----------------------------------
-   TAB HELPERS
+   TAB
 ----------------------------------- */
 
 export function getActiveTab() {
-  return (
-    APP_STATE.activeTab
-  );
+  return APP_STATE.activeTab;
 }
 
 export function setActiveTab(
@@ -55,49 +42,8 @@ export function setActiveTab(
 }
 
 /* -----------------------------------
-   FILTER HELPERS
+   FILTERS
 ----------------------------------- */
-
-export function setFilter(
-  key,
-  value
-) {
-  APP_STATE.filters[
-    key
-  ] = value;
-}
-
-export function resetFilters() {
-  APP_STATE.filters = {
-    month: "AUTO",
-    startDate: "",
-    endDate: "",
-    brand: "ALL",
-    poType: "ALL",
-    search: ""
-  };
-}
-
-/* -----------------------------------
-   AUTO MONTH
------------------------------------ */
-
-export function resolveAutoMonth() {
-  if (
-    !APP_STATE.store
-  ) {
-    return "ALL";
-  }
-
-  const months =
-    APP_STATE.store.meta
-      ?.months || [];
-
-  return (
-    months[0] ||
-    "ALL"
-  );
-}
 
 export function getFilters() {
   const out = {
@@ -113,4 +59,50 @@ export function getFilters() {
   }
 
   return out;
+}
+
+export function setFilter(
+  key,
+  value
+) {
+  APP_STATE.filters[
+    key
+  ] = value;
+}
+
+/* compatibility */
+export function setFilters(
+  payload = {}
+) {
+  APP_STATE.filters = {
+    ...APP_STATE.filters,
+    ...payload
+  };
+}
+
+export function resetFilters() {
+  APP_STATE.filters = {
+    month: "AUTO",
+    startDate: "",
+    endDate: "",
+    brand: "ALL",
+    poType: "ALL",
+    search: ""
+  };
+}
+
+/* -----------------------------------
+   HELPERS
+----------------------------------- */
+
+export function resolveAutoMonth() {
+  const months =
+    APP_STATE.store
+      ?.meta
+      ?.months || [];
+
+  return (
+    months[0] ||
+    "ALL"
+  );
 }
