@@ -83,4 +83,42 @@ export const STOCK_COVER_BUCKETS = [
   { label: "<30", min: 0, max: 29.99 },
   { label: "30-45", min: 30, max: 45 },
   { label: "45-60", min: 45.01, max: 60 },
-  { label: "60
+  { label: "60-90", min: 60.01, max: 90 },
+  { label: ">90", min: 90.01, max: Infinity }
+];
+
+/* -----------------------------------
+   DEFAULT FILTERS
+----------------------------------- */
+
+export const DEFAULT_FILTERS = {
+  month: "ALL",
+  startDate: "",
+  endDate: "",
+  brand: "ALL",
+  poType: "ALL",
+  search: ""
+};
+
+/* -----------------------------------
+   MONTH ORDER
+----------------------------------- */
+
+export const MONTH_ORDER = [
+  "JAN","FEB","MAR","APR","MAY","JUN",
+  "JUL","AUG","SEP","OCT","NOV","DEC"
+];
+
+/* -----------------------------------
+   DRR CONFIG
+----------------------------------- */
+
+export const DRR_WINDOW_DAYS = 30;
+
+/* -----------------------------------
+   UI LIMITS
+----------------------------------- */
+
+export const TABLE_PAGE_SIZE = 100;
+
+export const SEARCH_DEBOUNCE_MS = 250;
