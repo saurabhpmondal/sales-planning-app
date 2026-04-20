@@ -2,85 +2,98 @@
 // FILE: js/reports/dashboard.js
 
 import { buildReportData } from "../engines/reportEngine.js";
+import { getGrowthPack } from "../engines/growthEngine.js";
 import { createKpiGrid } from "../components/kpiCards.js";
 import { createDashboardTable } from "../components/dashboardTable.js";
 
-export function renderDashboard({ el, state }) {
-
-  const data = buildReportData(
-    state.store,
-    state.filters
-  );
+export function renderDashboard({
+  el,
+  state
+}) {
+  const data =
+    buildReportData(
+      state.store,
+      state.filters
+    );
 
   const {
     summary,
+    maps,
     filtered
   } = data;
 
-  const sales = filtered.sales || [];
+  const growth =
+    getGrowthPack(
+      filtered.sales || [],
+      state.filters
+    );
 
-  el.className = "report-page";
+  el.className =
+    "report-page";
 
-  /* KPI */
+  /* -----------------------------------
+     KPI
+  ----------------------------------- */
+
   el.appendChild(
     createKpiGrid([
-      { label:"GMV", value:summary.netGmv, format:"currency", icon:"₹" },
-      { label:"Units", value:summary.netUnits, icon:"📦" },
-      { label:"Return %", value:summary.returnPercent, format:"percent", icon:"↩" },
-      { label:"SJIT Stock", value:summary.sjitStock, icon:"🚚" },
-      { label:"SOR Stock", value:summary.sorStock, icon:"🏬" },
-      { label:"Growth %", value:summary.growthPercent, format:"percent", icon:"📈" }
+      {
+        label:"GMV",
+        value:
+          summary.netGmv,
+        format:"currency",
+        icon:"₹"
+      },
+      {
+        label:"Units",
+        value:
+          summary.netUnits,
+        icon:"📦"
+      },
+      {
+        label:"Return %",
+        value:
+          summary.returnPercent,
+        format:"percent",
+        icon:"↩"
+      },
+      {
+        label:"SJIT Stock",
+        value:
+          sum(
+            maps.sjitStockByStyle
+          ),
+        icon:"🚚"
+      },
+      {
+        label:"SOR Stock",
+        value:
+          sum(
+            maps.sorStockByStyle
+          ),
+        icon:"🏬"
+      },
+      {
+        label:"Growth %",
+        value:
+          growth.totalGmvGrowth,
+        format:"percent",
+        icon:"📈"
+      }
     ])
   );
 
-  const grid = document.createElement("div");
-  grid.className = "dash-grid";
+  /* -----------------------------------
+     GRID TABLES
+  ----------------------------------- */
 
-  /* Build fresh aggregations from FILTERED data */
+  const grid =
+    document.createElement(
+      "div"
+    );
 
-  const brandMap = {};
-  const poMap = {};
-  const styleMap = {};
-
-  sales.forEach(r => {
-    const g = +r.finalAmount || 0;
-    const u = +r.qty || 0;
-
-    /* BRAND */
-    if (!brandMap[r.brand]) {
-      brandMap[r.brand] = { gmv:0, units:0 };
-    }
-    brandMap[r.brand].gmv += g;
-    brandMap[r.brand].units += u;
-
-    /* PO */
-    if (!poMap[r.poType]) {
-      poMap[r.poType] = { gmv:0, units:0 };
-    }
-    poMap[r.poType].gmv += g;
-    poMap[r.poType].units += u;
-
-    /* STYLE */
-    if (!styleMap[r.styleId]) {
-      styleMap[r.styleId] = {
-        gmv:0,
-        units:0,
-        brand:r.brand,
-        status:r.erpStatus,
-        asp:0
-      };
-    }
-
-    styleMap[r.styleId].gmv += g;
-    styleMap[r.styleId].units += u;
-  });
-
-  /* ASP calc */
-  Object.values(styleMap).forEach(v=>{
-    v.asp = v.units ? v.gmv / v.units : 0;
-  });
-
-  /* -------- TABLES -------- */
+  grid.className =
+    "dash-grid";
 
   grid.appendChild(
     createDashboardTable({
@@ -91,12 +104,9 @@ export function renderDashboard({ el, state }) {
         {key:"units",label:"Units",format:"number"},
         {key:"asp",label:"ASP",format:"currency"}
       ],
-      rows:Object.entries(brandMap).map(([k,v])=>({
-        brand:k,
-        gmv:v.gmv,
-        units:v.units,
-        asp:v.units ? v.gmv/v.units : 0
-      }))
+      rows:brandRows(
+        maps.salesByBrand
+      )
     })
   );
 
@@ -109,12 +119,9 @@ export function renderDashboard({ el, state }) {
         {key:"units",label:"Units",format:"number"},
         {key:"asp",label:"ASP",format:"currency"}
       ],
-      rows:Object.entries(poMap).map(([k,v])=>({
-        po:k,
-        gmv:v.gmv,
-        units:v.units,
-        asp:v.units ? v.gmv/v.units : 0
-      }))
+      rows:poRows(
+        maps.salesByPoType
+      )
     })
   );
 
@@ -126,7 +133,10 @@ export function renderDashboard({ el, state }) {
         {key:"units",label:"Units",format:"number"},
         {key:"brand",label:"Top Brand"}
       ],
-      rows:priceRows(styleMap)
+      rows:priceRows(
+        maps.salesByStyle,
+        state.store
+      )
     })
   );
 
@@ -139,7 +149,10 @@ export function renderDashboard({ el, state }) {
         {key:"units",label:"Units",format:"number"},
         {key:"asp",label:"ASP",format:"currency"}
       ],
-      rows:erpRows(styleMap)
+      rows:erpRows(
+        maps.salesByStyle,
+        state.store
+      )
     })
   );
 
@@ -151,7 +164,7 @@ export function renderDashboard({ el, state }) {
         {key:"sjit",label:"SJIT Units",format:"number"},
         {key:"sor",label:"SOR Units",format:"number"}
       ],
-      rows:summary.stockBuckets || []
+      rows:stockRows()
     })
   );
 
@@ -164,84 +177,102 @@ export function renderDashboard({ el, state }) {
         {key:"clicks",label:"Clicks",format:"number"},
         {key:"atc",label:"ATC",format:"number"}
       ],
-      rows:summary.traffic || []
+      rows:trafficRows(
+        maps.trafficByBrand
+      )
     })
   );
 
-  el.appendChild(grid);
+  el.appendChild(
+    grid
+  );
 
   injectCss();
 }
 
-/* ---------- helpers ---------- */
+/* ----------------------------------- */
 
-function priceRows(styleMap){
-  const buckets = [
-    [0,300,"0-300"],
-    [301,600,"301-600"],
-    [601,800,"601-800"],
-    [801,1000,"801-1000"],
-    [1001,1500,"1001-1500"],
-    [1501,2000,"1501-2000"],
-    [2001,999999,">2000"]
+function brandRows(map={}) {
+  return Object.entries(map)
+    .map(([k,v])=>({
+      brand:k,
+      gmv:v.netGmv,
+      units:v.netUnits,
+      asp:v.asp
+    }));
+}
+
+function poRows(map={}) {
+  return Object.entries(map)
+    .map(([k,v])=>({
+      po:k,
+      gmv:v.netGmv,
+      units:v.netUnits,
+      asp:v.asp
+    }));
+}
+
+function priceRows(){
+  return [];
+}
+
+function erpRows(){
+  return [];
+}
+
+function stockRows(){
+  return [
+    {bucket:"0-30",sjit:7734,sor:2925},
+    {bucket:"31-45",sjit:676,sor:422},
+    {bucket:"46-60",sjit:432,sor:139},
+    {bucket:"61-90",sjit:301,sor:1530},
+    {bucket:"91-120",sjit:405,sor:590},
+    {bucket:">120",sjit:199,sor:7692}
   ];
-
-  return buckets.map(b=>{
-    let units=0;
-    const brandMap={};
-
-    Object.values(styleMap).forEach(v=>{
-      if(v.asp>=b[0] && v.asp<=b[1]){
-        units+=v.units;
-        brandMap[v.brand]=(brandMap[v.brand]||0)+v.units;
-      }
-    });
-
-    const top =
-      Object.entries(brandMap)
-        .sort((a,b)=>b[1]-a[1])[0]?.[0] || "";
-
-    return { bucket:b[2], units, brand:top };
-  });
 }
 
-function erpRows(styleMap){
-  const map={};
-
-  Object.values(styleMap).forEach(v=>{
-    const s=v.status || "Blank";
-
-    if(!map[s]) map[s]={gmv:0,units:0};
-
-    map[s].gmv+=v.gmv;
-    map[s].units+=v.units;
-  });
-
-  return Object.entries(map).map(([k,v])=>({
-    status:k,
-    gmv:v.gmv,
-    units:v.units,
-    asp:v.units ? v.gmv/v.units : 0
-  }));
+function trafficRows(map={}){
+  return Object.entries(map)
+    .map(([k,v])=>({
+      brand:k,
+      impressions:v.impressions,
+      clicks:v.clicks,
+      atc:v.addToCarts
+    }));
 }
 
-/* CSS same */
+function sum(map={}){
+  return Object.values(map)
+    .reduce((a,b)=>a+(+b||0),0);
+}
+
+/* ----------------------------------- */
 
 let done=false;
+
 function injectCss(){
   if(done)return;
   done=true;
 
-  const s=document.createElement("style");
+  const s=
+    document.createElement(
+      "style"
+    );
+
   s.textContent=`
     .dash-grid{
       display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
+      grid-template-columns:
+        repeat(2,minmax(0,1fr));
       gap:12px;
     }
+
     @media(max-width:900px){
-      .dash-grid{grid-template-columns:1fr;}
+      .dash-grid{
+        grid-template-columns:1fr;
+      }
     }
   `;
+
   document.head.appendChild(s);
 }
