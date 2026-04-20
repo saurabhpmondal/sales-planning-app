@@ -5,32 +5,24 @@ import { buildReportData } from "../engines/reportEngine.js";
 import { createKpiGrid } from "../components/kpiCards.js";
 import { createDashboardTable } from "../components/dashboardTable.js";
 
-export function renderDashboard({
-  el,
-  state
-}) {
-  const data =
-    buildReportData(
-      state.store,
-      state.filters
-    );
+export function renderDashboard({ el, state }) {
+  const data = buildReportData(
+    state.store,
+    state.filters
+  );
 
-  const {
-    summary,
-    maps
-  } = data;
+  const { summary, maps } = data;
 
-  el.className =
-    "report-page";
+  el.className = "report-page";
 
   el.appendChild(
     createKpiGrid([
-      {label:"GMV",value:summary.netGmv,format:"currency",icon:"₹"},
-      {label:"Units",value:summary.netUnits,icon:"📦"},
-      {label:"Return %",value:summary.returnPercent,format:"percent",icon:"↩"},
-      {label:"SJIT Stock",value:sum(maps.sjitStockByStyle),icon:"🚚"},
-      {label:"SOR Stock",value:sum(maps.sorStockByStyle),icon:"🏬"},
-      {label:"Growth %",value:avg(maps.growthByStyle),format:"percent",icon:"📈"}
+      { label:"GMV", value:summary.netGmv, format:"currency", icon:"₹" },
+      { label:"Units", value:summary.netUnits, icon:"📦" },
+      { label:"Return %", value:summary.returnPercent, format:"percent", icon:"↩" },
+      { label:"SJIT Stock", value:sum(maps.sjitStockByStyle), icon:"🚚" },
+      { label:"SOR Stock", value:sum(maps.sorStockByStyle), icon:"🏬" },
+      { label:"Growth %", value:avg(maps.growthByStyle), format:"percent", icon:"📈" }
     ])
   );
 
@@ -40,6 +32,7 @@ export function renderDashboard({
   grid.className =
     "dash-grid";
 
+  /* 1 */
   grid.appendChild(
     createDashboardTable({
       title:"Brand Performance",
@@ -49,12 +42,11 @@ export function renderDashboard({
         {key:"units",label:"Units",format:"number"},
         {key:"asp",label:"ASP",format:"currency"}
       ],
-      rows:brandRows(
-        maps.salesByBrand
-      )
+      rows:brandRows(maps.salesByBrand)
     })
   );
 
+  /* 2 */
   grid.appendChild(
     createDashboardTable({
       title:"PO Type Analysis",
@@ -64,12 +56,11 @@ export function renderDashboard({
         {key:"units",label:"Units",format:"number"},
         {key:"asp",label:"ASP",format:"currency"}
       ],
-      rows:poRows(
-        maps.salesByPoType
-      )
+      rows:poRows(maps.salesByPoType)
     })
   );
 
+  /* 3 FIXED */
   grid.appendChild(
     createDashboardTable({
       title:"Price Range Analysis",
@@ -85,6 +76,7 @@ export function renderDashboard({
     })
   );
 
+  /* 4 FIXED */
   grid.appendChild(
     createDashboardTable({
       title:"ERP Status Analysis",
@@ -95,12 +87,13 @@ export function renderDashboard({
         {key:"asp",label:"ASP",format:"currency"}
       ],
       rows:erpRows(
-        maps,
+        maps.salesByStyle,
         state.store
       )
     })
   );
 
+  /* 5 */
   grid.appendChild(
     createDashboardTable({
       title:"Stock Cover Analysis",
@@ -113,6 +106,7 @@ export function renderDashboard({
     })
   );
 
+  /* 6 */
   grid.appendChild(
     createDashboardTable({
       title:"Traffic Analysis",
@@ -122,9 +116,7 @@ export function renderDashboard({
         {key:"clicks",label:"Clicks",format:"number"},
         {key:"atc",label:"ATC",format:"number"}
       ],
-      rows:trafficRows(
-        maps.trafficByBrand
-      )
+      rows:trafficRows(maps.trafficByBrand)
     })
   );
 
@@ -135,32 +127,106 @@ export function renderDashboard({
 
 /* ----------------------------------- */
 
-function brandRows(map={}){
-  return Object.entries(map)
+function brandRows(map={}) {
+  return Object.entries(map).map(([k,v])=>({
+    brand:k,
+    gmv:v.netGmv,
+    units:v.netUnits,
+    asp:v.asp
+  }));
+}
+
+function poRows(map={}) {
+  return Object.entries(map).map(([k,v])=>({
+    po:k,
+    gmv:v.netGmv,
+    units:v.netUnits,
+    asp:v.asp
+  }));
+}
+
+/* FIXED PRICE RANGE */
+function priceRows(map={},store) {
+
+  const buckets = [
+    [0,300,"0-300"],
+    [301,600,"301-600"],
+    [601,800,"601-800"],
+    [801,1000,"801-1000"],
+    [1001,1500,"1001-1500"],
+    [1501,2000,"1501-2000"],
+    [2001,999999,">2000"]
+  ];
+
+  return buckets.map(b=>{
+    let units = 0;
+    const brands = {};
+
+    Object.entries(map).forEach(([id,v])=>{
+      const asp = +v.asp || 0;
+
+      if(asp>=b[0] && asp<=b[1]){
+        units += +v.netUnits || 0;
+
+        const br =
+          store.lookups
+            ?.productByStyle?.[id]
+            ?.brand || "";
+
+        brands[br] =
+          (brands[br]||0) +
+          (+v.netUnits||0);
+      }
+    });
+
+    const topBrand =
+      Object.entries(brands)
+        .sort((a,b)=>b[1]-a[1])[0]?.[0] || "";
+
+    return {
+      bucket:b[2],
+      units,
+      brand:topBrand
+    };
+  });
+}
+
+/* FIXED ERP */
+function erpRows(map={},store){
+
+  const out = {};
+
+  Object.entries(map).forEach(([id,v])=>{
+
+    const status =
+      store.lookups
+        ?.productByStyle?.[id]
+        ?.status || "Blank";
+
+    if(!out[status]){
+      out[status]={
+        gmv:0,
+        units:0
+      };
+    }
+
+    out[status].gmv +=
+      +v.netGmv || 0;
+
+    out[status].units +=
+      +v.netUnits || 0;
+  });
+
+  return Object.entries(out)
     .map(([k,v])=>({
-      brand:k,
-      gmv:v.netGmv,
-      units:v.netUnits,
-      asp:v.asp
+      status:k,
+      gmv:v.gmv,
+      units:v.units,
+      asp:
+        v.units
+        ? v.gmv/v.units
+        : 0
     }));
-}
-
-function poRows(map={}){
-  return Object.entries(map)
-    .map(([k,v])=>({
-      po:k,
-      gmv:v.netGmv,
-      units:v.netUnits,
-      asp:v.asp
-    }));
-}
-
-function priceRows(map={},store){
-  return [];
-}
-
-function erpRows(){
-  return [];
 }
 
 function stockRows(){
@@ -174,29 +240,30 @@ function stockRows(){
   ];
 }
 
-function trafficRows(map={}){
-  return Object.entries(map)
-    .map(([k,v])=>({
-      brand:k,
-      impressions:v.impressions,
-      clicks:v.clicks,
-      atc:v.addToCarts
-    }));
+function trafficRows(map={}) {
+  return Object.entries(map).map(([k,v])=>({
+    brand:k,
+    impressions:v.impressions,
+    clicks:v.clicks,
+    atc:v.addToCarts
+  }));
 }
 
-function sum(map={}){
+function sum(map={}) {
   return Object.values(map)
     .reduce((a,b)=>a+(+b||0),0);
 }
 
-function avg(map={}){
-  const arr=
+function avg(map={}) {
+  const arr =
     Object.values(map);
 
   return arr.length
     ? arr.reduce((a,b)=>a+(+b||0),0)/arr.length
-    :0;
+    : 0;
 }
+
+/* ----------------------------------- */
 
 let done=false;
 
@@ -209,8 +276,7 @@ function injectCss(){
   s.textContent=`
     .dash-grid{
       display:grid;
-      grid-template-columns:
-        repeat(2,minmax(0,1fr));
+      grid-template-columns:repeat(2,minmax(0,1fr));
       gap:12px;
     }
 
