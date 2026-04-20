@@ -1,13 +1,16 @@
 // FULL REPLACEMENT FILE
 // FILE: js/reports/sjitPlanning.js
 
+import { setFilters } from "../core/state.js";
 import { getSjitPlanningRows } from "../engines/sjitPlanningEngine.js";
 import { createTable } from "../components/table.js";
 
 /* -----------------------------------
    SJIT PLANNING REPORT
-   - Lazy load
-   - Fast render
+   FIXED:
+   - Force rolling 30 filters first
+   - Then build rows
+   - Lazy load preserved
 ----------------------------------- */
 
 const PAGE_SIZE = 50;
@@ -17,8 +20,9 @@ export function renderSjitPlanning({
   el,
   state
 }) {
-  autoApplyRolling30(
-    state
+  applyRollingWindow(
+    state,
+    30
   );
 
   const rows =
@@ -42,8 +46,10 @@ export function renderSjitPlanning({
 
   el.appendChild(
     createTable({
-      title:"SJIT Planning",
-      meta:`${visible.length}/${rows.length} styles`,
+      title:
+        "SJIT Planning",
+      meta:
+        `${visible.length}/${rows.length} styles`,
       mode:"grid",
       minWidth:1800,
       columns:cols(),
@@ -83,16 +89,10 @@ export function renderSjitPlanning({
 
 /* ----------------------------------- */
 
-function autoApplyRolling30(
-  state
+function applyRollingWindow(
+  state,
+  days
 ){
-  if(
-    state.filters
-      .startDate &&
-    state.filters
-      .endDate
-  ) return;
-
   const end =
     new Date();
 
@@ -100,16 +100,25 @@ function autoApplyRolling30(
     new Date();
 
   start.setDate(
-    end.getDate()-29
+    end.getDate() -
+    (days - 1)
   );
 
-  state.filters
-    .startDate =
-    iso(start);
+  const next = {
+    month:"ALL",
+    startDate:
+      iso(start),
+    endDate:
+      iso(end)
+  };
 
-  state.filters
-    .endDate =
-    iso(end);
+  setFilters(next);
+
+  state.filters =
+    {
+      ...state.filters,
+      ...next
+    };
 }
 
 function iso(d){
@@ -148,12 +157,12 @@ function injectCss(){
   if(done)return;
   done=true;
 
-  const s=
+  const s =
     document.createElement(
       "style"
     );
 
-  s.textContent=`
+  s.textContent = `
     .load-more-btn{
       margin:12px auto;
       display:block;
