@@ -6,7 +6,11 @@ import { createHeader } from "./components/header.js";
 import { createFiltersBar } from "./components/filtersBar.js";
 import { createTabsBar } from "./components/tabsBar.js";
 
-import { APP_STATE } from "./core/state.js";
+import {
+  APP_STATE,
+  hydrateInitialFilters
+} from "./core/state.js";
+
 import { registerReports } from "./core/registry.js";
 import { mountRouter } from "./core/router.js";
 import { bindGlobalEvents } from "./core/events.js";
@@ -34,7 +38,7 @@ export async function bootApplication() {
     "Mapping columns..."
   );
 
-  /* 2. Map columns */
+  /* 2. Map */
   const mapped =
     mapAllDatasets(
       rawData
@@ -78,20 +82,27 @@ export async function bootApplication() {
   APP_STATE.store =
     store;
 
+  /* -----------------------------------
+     CRITICAL FIX:
+     Apply default filters BEFORE render
+  ----------------------------------- */
+
+  hydrateInitialFilters();
+
   showLoaderText(
     "Rendering app..."
   );
 
-  /* 6. Shell */
+  /* 6. Shell/UI */
   renderApplication();
 
-  /* 7. Register reports */
+  /* 7. Reports */
   registerReports();
 
-  /* 8. Bind events */
+  /* 8. Events */
   bindGlobalEvents();
 
-  /* 9. Router */
+  /* 9. Router render AFTER filters exist */
   mountRouter();
 
   /* 10. Hide loader */
@@ -114,8 +125,7 @@ function renderApplication() {
     );
   }
 
-  root.innerHTML =
-    "";
+  root.innerHTML = "";
 
   const shell =
     createAppShell();
@@ -150,7 +160,7 @@ function renderApplication() {
 }
 
 /* -----------------------------------
-   LOADER HELPERS
+   LOADER
 ----------------------------------- */
 
 function showLoaderText(
@@ -178,6 +188,7 @@ function hideBootLoader() {
 
   loader.style.opacity =
     "0";
+
   loader.style.pointerEvents =
     "none";
 
