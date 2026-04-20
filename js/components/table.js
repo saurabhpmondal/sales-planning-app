@@ -1,9 +1,13 @@
+// REPLACE FILE
 // FILE: js/components/table.js
 
 import { formatCurrency } from "../utils/format.js";
 
 /* -----------------------------------
    TABLE COMPONENT
+   Upgraded:
+   - supports custom render()
+   - safer formatting
 ----------------------------------- */
 
 export function createTable({
@@ -15,7 +19,9 @@ export function createTable({
   minWidth = ""
 } = {}) {
   const wrapper =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
   wrapper.className =
     "table-card";
@@ -31,22 +37,22 @@ export function createTable({
       </div>
     </div>
 
-    <div
-      class="table-scroll"
-      ${
-        minWidth
-          ? `style="min-width:${minWidth}px"`
-          : ""
-      }
-    >
+    <div class="table-scroll">
       ${
         rows.length
           ? `
-        <table class="data-table ${
-          compact
-            ? "data-table--compact"
-            : ""
-        }">
+        <table
+          class="data-table ${
+            compact
+              ? "data-table--compact"
+              : ""
+          }"
+          ${
+            minWidth
+              ? `style="min-width:${minWidth}px"`
+              : ""
+          }
+        >
           <thead>
             <tr>
               ${columns
@@ -102,21 +108,31 @@ function createRow(
     <tr>
       ${columns
         .map((col) => {
-          const value =
-            row[col.key];
+          const raw =
+            row[
+              col.key
+            ];
 
-          const cls =
-            col.align
-              ? "t-" +
-                col.align
-              : "";
+          const value =
+            typeof col.render ===
+            "function"
+              ? col.render(
+                  raw,
+                  row
+                )
+              : formatCell(
+                  raw,
+                  col.format
+                );
 
           return `
-            <td class="${cls}">
-              ${formatCell(
-                value,
-                col.format
-              )}
+            <td class="${
+              col.align
+                ? "t-" +
+                  col.align
+                : ""
+            }">
+              ${value}
             </td>
           `;
         })
@@ -126,7 +142,7 @@ function createRow(
 }
 
 /* -----------------------------------
-   CELL FORMAT
+   FORMATTERS
 ----------------------------------- */
 
 function formatCell(
@@ -162,12 +178,34 @@ function formatCell(
     );
   }
 
-  return value ?? "";
+  return safe(
+    value
+  );
 }
 
 function num(v) {
-  return Math.round(
-    (Number(v) || 0) *
-      100
-  ) / 100;
+  return (
+    Math.round(
+      (Number(v) || 0) *
+        100
+    ) / 100
+  );
+}
+
+function safe(v) {
+  return String(
+    v ?? ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    );
 }
