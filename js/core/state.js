@@ -3,8 +3,8 @@
 
 /* -----------------------------------
    GLOBAL STATE
-   FIX:
-   Initial month truly applied
+   FINAL FIX:
+   Dashboard first load uses month filter
 ----------------------------------- */
 
 export const APP_STATE = {
@@ -14,7 +14,7 @@ export const APP_STATE = {
     "dashboard",
 
   filters: {
-    month: "AUTO",
+    month: "ALL",
     startDate: "",
     endDate: "",
     brand: "ALL",
@@ -27,9 +27,7 @@ export const APP_STATE = {
   }
 };
 
-/* -----------------------------------
-   TAB
------------------------------------ */
+/* ----------------------------------- */
 
 export function getActiveTab() {
   return APP_STATE.activeTab;
@@ -46,6 +44,12 @@ export function setActiveTab(
    FILTERS
 ----------------------------------- */
 
+export function getFilters() {
+  return {
+    ...APP_STATE.filters
+  };
+}
+
 export function setFilter(
   key,
   value
@@ -56,7 +60,7 @@ export function setFilter(
 }
 
 export function setFilters(
-  obj = {}
+  obj={}
 ) {
   APP_STATE.filters = {
     ...APP_STATE.filters,
@@ -68,33 +72,31 @@ export function resetFilters() {
   APP_STATE.filters = {
     month:
       resolveAutoMonth(),
-    startDate: "",
-    endDate: "",
-    brand: "ALL",
-    poType: "ALL",
-    search: ""
+    startDate:"",
+    endDate:"",
+    brand:"ALL",
+    poType:"ALL",
+    search:""
   };
-}
-
-export function getFilters() {
-  const out = {
-    ...APP_STATE.filters
-  };
-
-  if (
-    out.month ===
-    "AUTO"
-  ) {
-    out.month =
-      resolveAutoMonth();
-  }
-
-  return out;
 }
 
 /* -----------------------------------
-   AUTO MONTH
+   IMPORTANT:
+   Call after store load
 ----------------------------------- */
+
+export function hydrateInitialFilters() {
+  APP_STATE.filters.month =
+    resolveAutoMonth();
+
+  APP_STATE.filters.startDate =
+    "";
+
+  APP_STATE.filters.endDate =
+    "";
+}
+
+/* ----------------------------------- */
 
 export function resolveAutoMonth() {
   const months =
@@ -106,13 +108,4 @@ export function resolveAutoMonth() {
     months[0] ||
     "ALL"
   );
-}
-
-/* -----------------------------------
-   AFTER STORE LOAD
------------------------------------ */
-
-export function hydrateInitialFilters() {
-  APP_STATE.filters.month =
-    resolveAutoMonth();
 }
