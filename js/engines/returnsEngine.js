@@ -1,3 +1,4 @@
+// REPLACE FILE
 // FILE: js/engines/returnsEngine.js
 
 import {
@@ -5,42 +6,50 @@ import {
   RETURN_WINDOW_DAYS
 } from "../core/constants.js";
 
-import { percent } from "../utils/math.js";
-import { getDateScore } from "../utils/dates.js";
+import {
+  percent
+} from "../utils/math.js";
+
+import {
+  getDateScore,
+  parseMonthYear
+} from "../utils/dates.js";
 
 /* -----------------------------------
    RETURNS ENGINE
+   Fixed Logic:
+   Current selected month = MTD only
+   Past month = sale month + 60 days
 ----------------------------------- */
 
 /**
  * Summary
  */
 export function getReturnSummary(
-  returnRows = [],
+  rows = [],
   salesUnits = 0
 ) {
   const valid =
-    returnRows.filter(
+    rows.filter(
       isValidReturn
     );
 
-  const units =
+  const returnUnits =
     valid.length;
 
   return {
-    returnUnits: units,
+    returnUnits,
     returnPercent:
       percent(
-        units,
+        returnUnits,
         salesUnits
       )
   };
 }
 
-/* -----------------------------------
-   STYLE LEVEL RETURNS
------------------------------------ */
-
+/**
+ * By style
+ */
 export function getReturnsByStyle(
   rows = []
 ) {
@@ -68,30 +77,93 @@ export function getReturnsByStyle(
 }
 
 /* -----------------------------------
-   RETURN WINDOW
-   Sale period + 60 days
+   MAIN WINDOW LOGIC
 ----------------------------------- */
 
 export function getReturnRowsForSalesWindow(
   salesRows = [],
-  returnRows = []
+  returnRows = [],
+  filters = {}
 ) {
   if (!salesRows.length) {
     return [];
   }
 
+  const selected =
+    filters.month ||
+    "";
+
+  const latestSaleDay =
+    Math.max(
+      ...salesRows.map(
+        (r) =>
+          Number(
+            r.date
+          ) || 1
+      ),
+      1
+    );
+
+  /* current month compare */
+  const latestMonth =
+    detectLatestMonth(
+      salesRows
+    );
+
+  const isCurrentMonth =
+    selected ===
+    latestMonth;
+
+  /* --------------------------------
+     CURRENT MONTH = MTD ONLY
+  -------------------------------- */
+  if (
+    isCurrentMonth
+  ) {
+    const {
+      month,
+      year
+    } =
+      parseMonthYear(
+        selected
+      );
+
+    return returnRows.filter(
+      (row) =>
+        isValidReturn(
+          row
+        ) &&
+        row.month ===
+          month &&
+        Number(
+          row.year
+        ) ===
+          Number(
+            year
+          ) &&
+        Number(
+          row.date
+        ) <=
+          latestSaleDay
+    );
+  }
+
+  /* --------------------------------
+     PAST MONTH = +60 days
+  -------------------------------- */
   let minScore =
     Infinity;
+
   let maxScore = 0;
 
-  salesRows.forEach((row) => {
+  salesRows.forEach((r) => {
     const score =
       getDateScore({
-        date: row.date,
+        date: r.date,
         month:
-          row.month,
+          r.month,
         year:
-          row.year
+          r.year
       });
 
     if (score < minScore)
@@ -101,7 +173,7 @@ export function getReturnRowsForSalesWindow(
       maxScore = score;
   });
 
-  const allowedMax =
+  const maxAllowed =
     maxScore +
     RETURN_WINDOW_DAYS;
 
@@ -117,7 +189,8 @@ export function getReturnRowsForSalesWindow(
 
       const score =
         getDateScore({
-          date: row.date,
+          date:
+            row.date,
           month:
             row.month,
           year:
@@ -128,16 +201,15 @@ export function getReturnRowsForSalesWindow(
         score >=
           minScore &&
         score <=
-          allowedMax
+          maxAllowed
       );
     }
   );
 }
 
-/* -----------------------------------
-   STYLE RETURN %
------------------------------------ */
-
+/**
+ * Return % by style
+ */
 export function getReturnPercentByStyle(
   returnMap = {},
   salesMap = {}
@@ -180,4 +252,55 @@ function isValidReturn(
     ).trim() ===
     VALID_RETURN_TYPE
   );
+}
+
+function detectLatestMonth(
+  rows = []
+) {
+  let best = {
+    score: 0,
+    label: ""
+  };
+
+  rows.forEach((r) => {
+    const score =
+      Number(
+        r.year
+      ) *
+        100 +
+      monthNo(
+        r.month
+      );
+
+    if (
+      score >
+      best.score
+    ) {
+      best = {
+        score,
+        label: `${r.month} ${r.year}`
+      };
+    }
+  });
+
+  return best.label;
+}
+
+function monthNo(
+  m
+) {
+  return [
+    "JAN",
+    "FEB",
+    "MAR",
+    "APR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AUG",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DEC"
+  ].indexOf(m) + 1;
 }
