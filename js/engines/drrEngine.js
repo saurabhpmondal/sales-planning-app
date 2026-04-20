@@ -1,53 +1,21 @@
+// REPLACE FILE
 // FILE: js/engines/drrEngine.js
-
-import { DRR_WINDOW_DAYS } from "../core/constants.js";
-import {
-  getDateScore,
-  withinLastNDays
-} from "../utils/dates.js";
 
 /* -----------------------------------
    DRR ENGINE
-   Always use last 30 days
+   Locked Rule:
+   Current calendar day - 1
 ----------------------------------- */
 
-/**
- * Style DRR map
- */
 export function getDrrByStyle(
   salesRows = []
 ) {
-  if (!salesRows.length) {
-    return {};
-  }
-
-  const latestScore =
-    getLatestScore(
-      salesRows
-    );
+  const divisor =
+    getDrrDays();
 
   const map = {};
 
   salesRows.forEach((row) => {
-    const score =
-      getDateScore({
-        date: row.date,
-        month:
-          row.month,
-        year:
-          row.year
-      });
-
-    if (
-      !withinLastNDays(
-        latestScore,
-        score,
-        DRR_WINDOW_DAYS
-      )
-    ) {
-      return;
-    }
-
     const id =
       row.styleId;
 
@@ -65,49 +33,21 @@ export function getDrrByStyle(
   ).forEach((id) => {
     map[id] =
       map[id] /
-      DRR_WINDOW_DAYS;
+      divisor;
   });
 
   return map;
 }
 
-/**
- * Brand DRR map
- */
 export function getDrrByBrand(
   salesRows = []
 ) {
-  if (!salesRows.length) {
-    return {};
-  }
-
-  const latestScore =
-    getLatestScore(
-      salesRows
-    );
+  const divisor =
+    getDrrDays();
 
   const map = {};
 
   salesRows.forEach((row) => {
-    const score =
-      getDateScore({
-        date: row.date,
-        month:
-          row.month,
-        year:
-          row.year
-      });
-
-    if (
-      !withinLastNDays(
-        latestScore,
-        score,
-        DRR_WINDOW_DAYS
-      )
-    ) {
-      return;
-    }
-
     const key =
       row.brand ||
       "Unknown";
@@ -124,35 +64,22 @@ export function getDrrByBrand(
   ).forEach((key) => {
     map[key] =
       map[key] /
-      DRR_WINDOW_DAYS;
+      divisor;
   });
 
   return map;
 }
 
 /* -----------------------------------
-   HELPERS
+   HELPER
 ----------------------------------- */
 
-function getLatestScore(
-  rows = []
-) {
-  let latest = 0;
+function getDrrDays() {
+  const today =
+    new Date().getDate();
 
-  rows.forEach((row) => {
-    const score =
-      getDateScore({
-        date: row.date,
-        month:
-          row.month,
-        year:
-          row.year
-      });
-
-    if (score > latest) {
-      latest = score;
-    }
-  });
-
-  return latest;
+  return Math.max(
+    today - 1,
+    1
+  );
 }
