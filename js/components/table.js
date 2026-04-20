@@ -5,9 +5,10 @@ import { formatCurrency } from "../utils/format.js";
 
 /* -----------------------------------
    TABLE COMPONENT
-   Upgraded:
-   - supports custom render()
-   - safer formatting
+   Fixed:
+   - first 2 columns sticky
+   - sku visible
+   - better horizontal scroll
 ----------------------------------- */
 
 export function createTable({
@@ -18,15 +19,15 @@ export function createTable({
   compact = false,
   minWidth = ""
 } = {}) {
-  const wrapper =
+  const wrap =
     document.createElement(
       "div"
     );
 
-  wrapper.className =
+  wrap.className =
     "table-card";
 
-  wrapper.innerHTML = `
+  wrap.innerHTML = `
     <div class="table-toolbar">
       <div class="table-title">
         ${title}
@@ -40,113 +41,147 @@ export function createTable({
     <div class="table-scroll">
       ${
         rows.length
-          ? `
-        <table
-          class="data-table ${
-            compact
-              ? "data-table--compact"
-              : ""
-          }"
-          ${
-            minWidth
-              ? `style="min-width:${minWidth}px"`
-              : ""
-          }
-        >
-          <thead>
-            <tr>
-              ${columns
-                .map(
-                  (col) => `
-                <th class="${
-                  col.align
-                    ? "t-" +
-                      col.align
-                    : ""
-                }">
-                  ${col.label}
-                </th>
-              `
-                )
-                .join("")}
-            </tr>
-          </thead>
-
-          <tbody>
-            ${rows
-              .map((row) =>
-                createRow(
-                  columns,
-                  row
-                )
-              )
-              .join("")}
-          </tbody>
-        </table>
-      `
+          ? renderTable(
+              columns,
+              rows,
+              compact,
+              minWidth
+            )
           : `
-        <div class="table-empty">
-          No data available
-        </div>
-      `
+            <div class="table-empty">
+              No data available
+            </div>
+          `
       }
     </div>
   `;
 
-  return wrapper;
+  injectCss();
+
+  return wrap;
 }
 
 /* -----------------------------------
-   ROW
+   TABLE HTML
 ----------------------------------- */
 
-function createRow(
+function renderTable(
+  columns,
+  rows,
+  compact,
+  minWidth
+) {
+  return `
+    <table
+      class="data-table ${
+        compact
+          ? "data-table--compact"
+          : ""
+      }"
+      ${
+        minWidth
+          ? `style="min-width:${minWidth}px"`
+          : ""
+      }
+    >
+      <thead>
+        <tr>
+          ${columns
+            .map(
+              (
+                col,
+                i
+              ) => `
+            <th class="
+              ${
+                col.align
+                  ? "t-" +
+                    col.align
+                  : ""
+              }
+              ${
+                i === 0
+                  ? "sticky-1"
+                  : ""
+              }
+              ${
+                i === 1
+                  ? "sticky-2"
+                  : ""
+              }
+            ">
+              ${col.label}
+            </th>
+          `
+            )
+            .join("")}
+        </tr>
+      </thead>
+
+      <tbody>
+        ${rows
+          .map((row) =>
+            renderRow(
+              columns,
+              row
+            )
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderRow(
   columns,
   row
 ) {
   return `
     <tr>
       ${columns
-        .map((col) => {
-          const raw =
-            row[
-              col.key
-            ];
-
-          const value =
-            typeof col.render ===
-            "function"
-              ? col.render(
-                  raw,
-                  row
-                )
-              : formatCell(
-                  raw,
-                  col.format
-                );
-
-          return `
-            <td class="${
+        .map(
+          (
+            col,
+            i
+          ) => `
+          <td class="
+            ${
               col.align
                 ? "t-" +
                   col.align
                 : ""
-            }">
-              ${value}
-            </td>
-          `;
-        })
+            }
+            ${
+              i === 0
+                ? "sticky-1"
+                : ""
+            }
+            ${
+              i === 1
+                ? "sticky-2"
+                : ""
+            }
+          ">
+            ${cell(
+              row[
+                col.key
+              ],
+              col.format
+            )}
+          </td>
+        `
+        )
         .join("")}
     </tr>
   `;
 }
 
 /* -----------------------------------
-   FORMATTERS
+   FORMAT
 ----------------------------------- */
 
-function formatCell(
-  value,
+function cell(
+  val,
   format
 ) {
   if (
@@ -154,7 +189,18 @@ function formatCell(
     "currency"
   ) {
     return formatCurrency(
-      value
+      val
+    );
+  }
+
+  if (
+    format ===
+    "number"
+  ) {
+    return num(
+      val
+    ).toLocaleString(
+      "en-IN"
     );
   }
 
@@ -163,23 +209,12 @@ function formatCell(
     "percent"
   ) {
     return `${num(
-      value
+      val
     )}%`;
   }
 
-  if (
-    format ===
-    "number"
-  ) {
-    return num(
-      value
-    ).toLocaleString(
-      "en-IN"
-    );
-  }
-
   return safe(
-    value
+    val
   );
 }
 
@@ -195,17 +230,53 @@ function num(v) {
 function safe(v) {
   return String(
     v ?? ""
-  )
-    .replaceAll(
-      "&",
-      "&amp;"
-    )
-    .replaceAll(
-      "<",
-      "&lt;"
-    )
-    .replaceAll(
-      ">",
-      "&gt;"
+  );
+}
+
+/* -----------------------------------
+   CSS
+----------------------------------- */
+
+let done = false;
+
+function injectCss() {
+  if (done) return;
+  done = true;
+
+  const style =
+    document.createElement(
+      "style"
     );
+
+  style.textContent = `
+    .table-scroll{
+      overflow:auto;
+      position:relative;
+    }
+
+    .sticky-1{
+      position:sticky;
+      left:0;
+      z-index:4;
+      background:#fff;
+      min-width:130px;
+    }
+
+    .sticky-2{
+      position:sticky;
+      left:130px;
+      z-index:4;
+      background:#fff;
+      min-width:150px;
+    }
+
+    thead .sticky-1,
+    thead .sticky-2{
+      z-index:8;
+    }
+  `;
+
+  document.head.appendChild(
+    style
+  );
 }
