@@ -2,11 +2,12 @@
 // FILE: js/reports/sales.js
 
 import { buildReportData } from "../engines/reportEngine.js";
+import { getGrowthPack } from "../engines/growthEngine.js";
 import { createTable } from "../components/table.js";
 
 /* -----------------------------------
    SALES REPORT
-   Compact final version
+   Uses final style growth
 ----------------------------------- */
 
 export function renderSales({
@@ -19,10 +20,17 @@ export function renderSales({
       state.filters
     );
 
+  const growth =
+    getGrowthPack(
+      data.filtered.sales || [],
+      state.filters
+    );
+
   const rows =
     buildRows(
       data,
-      state.store
+      state.store,
+      growth.styleGrowth
     );
 
   el.className =
@@ -30,15 +38,12 @@ export function renderSales({
 
   el.appendChild(
     createTable({
-      title:
-        "Sales Report",
-      meta:
-        `${rows.length} styles`,
-      columns:
-        cols(),
-      rows,
-      compact:true,
-      minWidth:2300
+      title:"Sales Report",
+      meta:`${rows.length} styles`,
+      mode:"grid",
+      minWidth:2200,
+      columns:cols(),
+      rows
     })
   );
 }
@@ -47,74 +52,85 @@ export function renderSales({
 
 function buildRows(
   data,
-  store
+  store,
+  styleGrowth = {}
 ) {
-  const ids=
+  const ids =
     Object.keys(
       data.maps
         .salesByStyle
     );
 
-  const rows=
+  const rows =
     ids.map((id)=>{
-      const s=
+      const s =
         data.maps
-          .salesByStyle[id]||{};
+          .salesByStyle[id] || {};
 
-      const t=
+      const t =
         data.maps
-          .trafficByStyle[id]||{};
+          .trafficByStyle[id] || {};
 
-      const pm=
+      const pm =
         store.lookups
-          .productByStyle[id]||{};
+          .productByStyle[id] || {};
 
-      const clicks=
-        t.clicks||0;
+      const clicks =
+        t.clicks || 0;
 
-      const units=
-        s.netUnits||0;
+      const units =
+        s.netUnits || 0;
 
       return {
         rank:0,
         styleId:id,
         erpSku:
-          pm.erpSku||"",
+          pm.erpSku || "",
         brand:
-          pm.brand||"",
+          pm.brand || "",
         rating:
-          t.rating||0,
+          t.rating || 0,
+
         gmv:
-          s.netGmv||0,
+          s.netGmv || 0,
         units,
         asp:
-          s.asp||0,
+          s.asp || 0,
+
         ret:
           data.maps
-            .returnPercentByStyle[id]||0,
+            .returnPercentByStyle[id] || 0,
+
         growth:
-          data.maps
-            .growthByStyle[id]||0,
+          styleGrowth[id] || 0,
+
         drr:
           data.maps
-            .drrByStyle[id]||0,
+            .drrByStyle[id] || 0,
+
         sjit:
           data.maps
-            .sjitStockByStyle[id]||0,
+            .sjitStockByStyle[id] || 0,
+
         sor:
           data.maps
-            .sorStockByStyle[id]||0,
+            .sorStockByStyle[id] || 0,
+
         imp:
-          t.impressions||0,
+          t.impressions || 0,
+
         clicks,
+
         atc:
-          t.addToCarts||0,
+          t.addToCarts || 0,
+
         ctr:
-          t.ctr||0,
+          t.ctr || 0,
+
         cvr:
           clicks
-          ? (units/clicks)*100
-          :0
+            ? (units/clicks)*100
+            : 0
       };
     });
 
@@ -130,6 +146,8 @@ function buildRows(
 
   return rows;
 }
+
+/* ----------------------------------- */
 
 function cols(){
   return [
