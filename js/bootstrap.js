@@ -1,3 +1,4 @@
+// REPLACE FILE
 // FILE: js/bootstrap.js
 
 import { createAppShell } from "./components/appShell.js";
@@ -8,103 +9,177 @@ import { createTabsBar } from "./components/tabsBar.js";
 import { APP_STATE } from "./core/state.js";
 import { registerReports } from "./core/registry.js";
 import { mountRouter } from "./core/router.js";
+import { bindGlobalEvents } from "./core/events.js";
 
 import { loadAllSources } from "./data/fetcher.js";
 import { mapAllDatasets } from "./data/mapper.js";
 import { normalizeAllDatasets } from "./data/normalizer.js";
 import { buildDataStore } from "./data/datastore.js";
+import { validateStore } from "./data/validator.js";
 
 /* -----------------------------------
    PUBLIC BOOT FUNCTION
 ----------------------------------- */
 
 export async function bootApplication() {
-  showLoaderText("Loading data sources...");
+  showLoaderText(
+    "Loading data sources..."
+  );
 
-  /* 1. Fetch CSV sources */
-  const rawData = await loadAllSources();
+  /* 1. Fetch CSV */
+  const rawData =
+    await loadAllSources();
 
-  showLoaderText("Mapping columns...");
+  showLoaderText(
+    "Mapping columns..."
+  );
 
-  /* 2. Map source columns once */
-  const mappedData = mapAllDatasets(rawData);
+  /* 2. Map columns */
+  const mapped =
+    mapAllDatasets(
+      rawData
+    );
 
-  showLoaderText("Normalizing datasets...");
+  showLoaderText(
+    "Normalizing datasets..."
+  );
 
-  /* 3. Normalize values */
-  const normalizedData = normalizeAllDatasets(mappedData);
+  /* 3. Normalize */
+  const normalized =
+    normalizeAllDatasets(
+      mapped
+    );
 
-  showLoaderText("Building data store...");
+  showLoaderText(
+    "Building store..."
+  );
 
-  /* 4. Create global store/cache */
-  const store = buildDataStore(normalizedData);
+  /* 4. Store */
+  const store =
+    buildDataStore(
+      normalized
+    );
 
-  /* 5. Save to state */
-  APP_STATE.store = store;
+  /* 5. Validate */
+  const issues =
+    validateStore(
+      store
+    );
 
-  showLoaderText("Rendering application...");
+  if (
+    issues.length
+  ) {
+    console.warn(
+      "Validation issues:",
+      issues
+    );
+  }
 
-  /* 6. Render shell */
+  APP_STATE.store =
+    store;
+
+  showLoaderText(
+    "Rendering app..."
+  );
+
+  /* 6. Shell */
   renderApplication();
 
   /* 7. Register reports */
   registerReports();
 
-  /* 8. Mount router */
+  /* 8. Bind events */
+  bindGlobalEvents();
+
+  /* 9. Router */
   mountRouter();
 
-  /* 9. Hide loader */
+  /* 10. Hide loader */
   hideBootLoader();
 }
 
 /* -----------------------------------
-   RENDER APP STRUCTURE
+   RENDER
 ----------------------------------- */
 
 function renderApplication() {
-  const root = document.getElementById("app");
+  const root =
+    document.getElementById(
+      "app"
+    );
 
   if (!root) {
-    throw new Error("Missing #app root element.");
+    throw new Error(
+      "Missing #app root"
+    );
   }
 
-  root.innerHTML = "";
+  root.innerHTML =
+    "";
 
-  const shell = createAppShell();
+  const shell =
+    createAppShell();
 
-  root.appendChild(shell);
+  root.appendChild(
+    shell
+  );
 
-  /* Header */
-  const headerTarget = document.getElementById("header-slot");
-  headerTarget.appendChild(createHeader());
+  document
+    .getElementById(
+      "header-slot"
+    )
+    .appendChild(
+      createHeader()
+    );
 
-  /* Filters */
-  const filtersTarget = document.getElementById("filters-slot");
-  filtersTarget.appendChild(createFiltersBar());
+  document
+    .getElementById(
+      "filters-slot"
+    )
+    .appendChild(
+      createFiltersBar()
+    );
 
-  /* Tabs */
-  const tabsTarget = document.getElementById("tabs-slot");
-  tabsTarget.appendChild(createTabsBar());
+  document
+    .getElementById(
+      "tabs-slot"
+    )
+    .appendChild(
+      createTabsBar()
+    );
 }
 
 /* -----------------------------------
    LOADER HELPERS
 ----------------------------------- */
 
-function showLoaderText(message) {
-  const el = document.querySelector(".boot-loader__text");
+function showLoaderText(
+  message
+) {
+  const el =
+    document.querySelector(
+      ".boot-loader__text"
+    );
 
-  if (el) el.textContent = message;
+  if (el) {
+    el.textContent =
+      message;
+  }
 }
 
 function hideBootLoader() {
-  const loader = document.getElementById("boot-loader");
+  const loader =
+    document.getElementById(
+      "boot-loader"
+    );
 
-  if (!loader) return;
+  if (!loader)
+    return;
 
-  loader.style.opacity = "0";
-  loader.style.pointerEvents = "none";
-  loader.style.transition = "opacity .25s ease";
+  loader.style.opacity =
+    "0";
+  loader.style.pointerEvents =
+    "none";
 
   setTimeout(() => {
     loader.remove();
