@@ -6,33 +6,82 @@ import { createKpiGrid } from "../components/kpiCards.js";
 import { createDashboardTable } from "../components/dashboardTable.js";
 
 export function renderDashboard({ el, state }) {
+
   const data = buildReportData(
     state.store,
     state.filters
   );
 
-  const { summary, maps } = data;
+  const {
+    summary,
+    filtered
+  } = data;
+
+  const sales = filtered.sales || [];
 
   el.className = "report-page";
 
+  /* KPI */
   el.appendChild(
     createKpiGrid([
       { label:"GMV", value:summary.netGmv, format:"currency", icon:"₹" },
       { label:"Units", value:summary.netUnits, icon:"📦" },
       { label:"Return %", value:summary.returnPercent, format:"percent", icon:"↩" },
-      { label:"SJIT Stock", value:sum(maps.sjitStockByStyle), icon:"🚚" },
-      { label:"SOR Stock", value:sum(maps.sorStockByStyle), icon:"🏬" },
-      { label:"Growth %", value:avg(maps.growthByStyle), format:"percent", icon:"📈" }
+      { label:"SJIT Stock", value:summary.sjitStock, icon:"🚚" },
+      { label:"SOR Stock", value:summary.sorStock, icon:"🏬" },
+      { label:"Growth %", value:summary.growthPercent, format:"percent", icon:"📈" }
     ])
   );
 
-  const grid =
-    document.createElement("div");
+  const grid = document.createElement("div");
+  grid.className = "dash-grid";
 
-  grid.className =
-    "dash-grid";
+  /* Build fresh aggregations from FILTERED data */
 
-  /* 1 */
+  const brandMap = {};
+  const poMap = {};
+  const styleMap = {};
+
+  sales.forEach(r => {
+    const g = +r.finalAmount || 0;
+    const u = +r.qty || 0;
+
+    /* BRAND */
+    if (!brandMap[r.brand]) {
+      brandMap[r.brand] = { gmv:0, units:0 };
+    }
+    brandMap[r.brand].gmv += g;
+    brandMap[r.brand].units += u;
+
+    /* PO */
+    if (!poMap[r.poType]) {
+      poMap[r.poType] = { gmv:0, units:0 };
+    }
+    poMap[r.poType].gmv += g;
+    poMap[r.poType].units += u;
+
+    /* STYLE */
+    if (!styleMap[r.styleId]) {
+      styleMap[r.styleId] = {
+        gmv:0,
+        units:0,
+        brand:r.brand,
+        status:r.erpStatus,
+        asp:0
+      };
+    }
+
+    styleMap[r.styleId].gmv += g;
+    styleMap[r.styleId].units += u;
+  });
+
+  /* ASP calc */
+  Object.values(styleMap).forEach(v=>{
+    v.asp = v.units ? v.gmv / v.units : 0;
+  });
+
+  /* -------- TABLES -------- */
+
   grid.appendChild(
     createDashboardTable({
       title:"Brand Performance",
@@ -42,11 +91,15 @@ export function renderDashboard({ el, state }) {
         {key:"units",label:"Units",format:"number"},
         {key:"asp",label:"ASP",format:"currency"}
       ],
-      rows:brandRows(maps.salesByBrand)
+      rows:Object.entries(brandMap).map(([k,v])=>({
+        brand:k,
+        gmv:v.gmv,
+        units:v.units,
+        asp:v.units ? v.gmv/v.units : 0
+      }))
     })
   );
 
-  /* 2 */
   grid.appendChild(
     createDashboardTable({
       title:"PO Type Analysis",
@@ -56,11 +109,15 @@ export function renderDashboard({ el, state }) {
         {key:"units",label:"Units",format:"number"},
         {key:"asp",label:"ASP",format:"currency"}
       ],
-      rows:poRows(maps.salesByPoType)
+      rows:Object.entries(poMap).map(([k,v])=>({
+        po:k,
+        gmv:v.gmv,
+        units:v.units,
+        asp:v.units ? v.gmv/v.units : 0
+      }))
     })
   );
 
-  /* 3 FIXED */
   grid.appendChild(
     createDashboardTable({
       title:"Price Range Analysis",
@@ -69,14 +126,10 @@ export function renderDashboard({ el, state }) {
         {key:"units",label:"Units",format:"number"},
         {key:"brand",label:"Top Brand"}
       ],
-      rows:priceRows(
-        maps.salesByStyle,
-        state.store
-      )
+      rows:priceRows(styleMap)
     })
   );
 
-  /* 4 FIXED */
   grid.appendChild(
     createDashboardTable({
       title:"ERP Status Analysis",
@@ -86,14 +139,10 @@ export function renderDashboard({ el, state }) {
         {key:"units",label:"Units",format:"number"},
         {key:"asp",label:"ASP",format:"currency"}
       ],
-      rows:erpRows(
-        maps.salesByStyle,
-        state.store
-      )
+      rows:erpRows(styleMap)
     })
   );
 
-  /* 5 */
   grid.appendChild(
     createDashboardTable({
       title:"Stock Cover Analysis",
@@ -102,11 +151,10 @@ export function renderDashboard({ el, state }) {
         {key:"sjit",label:"SJIT Units",format:"number"},
         {key:"sor",label:"SOR Units",format:"number"}
       ],
-      rows:stockRows()
+      rows:summary.stockBuckets || []
     })
   );
 
-  /* 6 */
   grid.appendChild(
     createDashboardTable({
       title:"Traffic Analysis",
@@ -116,7 +164,7 @@ export function renderDashboard({ el, state }) {
         {key:"clicks",label:"Clicks",format:"number"},
         {key:"atc",label:"ATC",format:"number"}
       ],
-      rows:trafficRows(maps.trafficByBrand)
+      rows:summary.traffic || []
     })
   );
 
@@ -125,29 +173,9 @@ export function renderDashboard({ el, state }) {
   injectCss();
 }
 
-/* ----------------------------------- */
+/* ---------- helpers ---------- */
 
-function brandRows(map={}) {
-  return Object.entries(map).map(([k,v])=>({
-    brand:k,
-    gmv:v.netGmv,
-    units:v.netUnits,
-    asp:v.asp
-  }));
-}
-
-function poRows(map={}) {
-  return Object.entries(map).map(([k,v])=>({
-    po:k,
-    gmv:v.netGmv,
-    units:v.netUnits,
-    asp:v.asp
-  }));
-}
-
-/* FIXED PRICE RANGE */
-function priceRows(map={},store) {
-
+function priceRows(styleMap){
   const buckets = [
     [0,300,"0-300"],
     [301,600,"301-600"],
@@ -159,133 +187,61 @@ function priceRows(map={},store) {
   ];
 
   return buckets.map(b=>{
-    let units = 0;
-    const brands = {};
+    let units=0;
+    const brandMap={};
 
-    Object.entries(map).forEach(([id,v])=>{
-      const asp = +v.asp || 0;
-
-      if(asp>=b[0] && asp<=b[1]){
-        units += +v.netUnits || 0;
-
-        const br =
-          store.lookups
-            ?.productByStyle?.[id]
-            ?.brand || "";
-
-        brands[br] =
-          (brands[br]||0) +
-          (+v.netUnits||0);
+    Object.values(styleMap).forEach(v=>{
+      if(v.asp>=b[0] && v.asp<=b[1]){
+        units+=v.units;
+        brandMap[v.brand]=(brandMap[v.brand]||0)+v.units;
       }
     });
 
-    const topBrand =
-      Object.entries(brands)
+    const top =
+      Object.entries(brandMap)
         .sort((a,b)=>b[1]-a[1])[0]?.[0] || "";
 
-    return {
-      bucket:b[2],
-      units,
-      brand:topBrand
-    };
+    return { bucket:b[2], units, brand:top };
   });
 }
 
-/* FIXED ERP */
-function erpRows(map={},store){
+function erpRows(styleMap){
+  const map={};
 
-  const out = {};
+  Object.values(styleMap).forEach(v=>{
+    const s=v.status || "Blank";
 
-  Object.entries(map).forEach(([id,v])=>{
+    if(!map[s]) map[s]={gmv:0,units:0};
 
-    const status =
-      store.lookups
-        ?.productByStyle?.[id]
-        ?.status || "Blank";
-
-    if(!out[status]){
-      out[status]={
-        gmv:0,
-        units:0
-      };
-    }
-
-    out[status].gmv +=
-      +v.netGmv || 0;
-
-    out[status].units +=
-      +v.netUnits || 0;
+    map[s].gmv+=v.gmv;
+    map[s].units+=v.units;
   });
 
-  return Object.entries(out)
-    .map(([k,v])=>({
-      status:k,
-      gmv:v.gmv,
-      units:v.units,
-      asp:
-        v.units
-        ? v.gmv/v.units
-        : 0
-    }));
-}
-
-function stockRows(){
-  return [
-    {bucket:"0-30",sjit:7734,sor:2925},
-    {bucket:"31-45",sjit:676,sor:422},
-    {bucket:"46-60",sjit:432,sor:139},
-    {bucket:"61-90",sjit:301,sor:1530},
-    {bucket:"91-120",sjit:405,sor:590},
-    {bucket:">120",sjit:199,sor:7692}
-  ];
-}
-
-function trafficRows(map={}) {
   return Object.entries(map).map(([k,v])=>({
-    brand:k,
-    impressions:v.impressions,
-    clicks:v.clicks,
-    atc:v.addToCarts
+    status:k,
+    gmv:v.gmv,
+    units:v.units,
+    asp:v.units ? v.gmv/v.units : 0
   }));
 }
 
-function sum(map={}) {
-  return Object.values(map)
-    .reduce((a,b)=>a+(+b||0),0);
-}
-
-function avg(map={}) {
-  const arr =
-    Object.values(map);
-
-  return arr.length
-    ? arr.reduce((a,b)=>a+(+b||0),0)/arr.length
-    : 0;
-}
-
-/* ----------------------------------- */
+/* CSS same */
 
 let done=false;
-
 function injectCss(){
   if(done)return;
   done=true;
 
   const s=document.createElement("style");
-
   s.textContent=`
     .dash-grid{
       display:grid;
       grid-template-columns:repeat(2,minmax(0,1fr));
       gap:12px;
     }
-
     @media(max-width:900px){
-      .dash-grid{
-        grid-template-columns:1fr;
-      }
+      .dash-grid{grid-template-columns:1fr;}
     }
   `;
-
   document.head.appendChild(s);
 }
