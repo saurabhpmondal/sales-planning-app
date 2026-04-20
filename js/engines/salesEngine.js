@@ -1,4 +1,4 @@
-
+// REPLACE FILE
 // FILE: js/engines/salesEngine.js
 
 import {
@@ -13,73 +13,27 @@ import { divide } from "../utils/math.js";
 ----------------------------------- */
 
 /**
- * Full summary from rows
+ * Full summary
  */
 export function getSalesSummary(
   rows = []
 ) {
-  let grossUnits = 0;
-  let cancelledUnits = 0;
-  let netUnits = 0;
-
-  let grossGmv = 0;
-  let cancelledGmv = 0;
-  let netGmv = 0;
+  const summary =
+    getEmptyMetrics();
 
   rows.forEach((row) => {
-    const qty =
-      Number(row.qty) || 0;
-
-    const gmv =
-      Number(
-        row.finalAmount
-      ) || 0;
-
-    grossUnits += qty;
-    grossGmv += gmv;
-
-    if (
-      isCancelled(
-        row.orderStatus
-      )
-    ) {
-      cancelledUnits +=
-        qty;
-
-      cancelledGmv +=
-        gmv;
-    }
-
-    if (
-      isSale(
-        row.orderStatus
-      )
-    ) {
-      netUnits += qty;
-      netGmv += gmv;
-    }
+    applyRow(
+      summary,
+      row
+    );
   });
 
-  return {
-    grossUnits,
-    cancelledUnits,
-    netUnits,
-
-    grossGmv,
-    cancelledGmv,
-    netGmv,
-
-    asp: divide(
-      netGmv,
-      netUnits
-    )
-  };
+  return summary;
 }
 
-/* -----------------------------------
-   STYLE LEVEL MAP
------------------------------------ */
-
+/**
+ * By Style
+ */
 export function getSalesByStyle(
   rows = []
 ) {
@@ -105,10 +59,9 @@ export function getSalesByStyle(
   return map;
 }
 
-/* -----------------------------------
-   BRAND LEVEL MAP
------------------------------------ */
-
+/**
+ * By Brand
+ */
 export function getSalesByBrand(
   rows = []
 ) {
@@ -133,10 +86,9 @@ export function getSalesByBrand(
   return map;
 }
 
-/* -----------------------------------
-   PO TYPE MAP
------------------------------------ */
-
+/**
+ * By PO Type
+ */
 export function getSalesByPoType(
   rows = []
 ) {
@@ -161,10 +113,9 @@ export function getSalesByPoType(
   return map;
 }
 
-/* -----------------------------------
-   DAILY UNITS
------------------------------------ */
-
+/**
+ * Date wise units
+ */
 export function getUnitsByDate(
   rows = []
 ) {
@@ -195,7 +146,7 @@ export function getUnitsByDate(
 }
 
 /* -----------------------------------
-   HELPERS
+   INTERNALS
 ----------------------------------- */
 
 function applyRow(
@@ -203,4 +154,78 @@ function applyRow(
   row
 ) {
   const qty =
-    Number
+    Number(row.qty) || 0;
+
+  const gmv =
+    Number(
+      row.finalAmount
+    ) || 0;
+
+  bucket.grossUnits +=
+    qty;
+
+  bucket.grossGmv +=
+    gmv;
+
+  if (
+    isCancelled(
+      row.orderStatus
+    )
+  ) {
+    bucket.cancelledUnits +=
+      qty;
+
+    bucket.cancelledGmv +=
+      gmv;
+  }
+
+  if (
+    isSale(
+      row.orderStatus
+    )
+  ) {
+    bucket.netUnits +=
+      qty;
+
+    bucket.netGmv +=
+      gmv;
+  }
+
+  bucket.asp =
+    divide(
+      bucket.netGmv,
+      bucket.netUnits
+    );
+}
+
+function getEmptyMetrics() {
+  return {
+    grossUnits: 0,
+    cancelledUnits: 0,
+    netUnits: 0,
+
+    grossGmv: 0,
+    cancelledGmv: 0,
+    netGmv: 0,
+
+    asp: 0
+  };
+}
+
+function isSale(
+  status = ""
+) {
+  return SALE_STATUSES.includes(
+    String(status)
+      .toUpperCase()
+  );
+}
+
+function isCancelled(
+  status = ""
+) {
+  return CANCEL_STATUSES.includes(
+    String(status)
+      .toUpperCase()
+  );
+}
