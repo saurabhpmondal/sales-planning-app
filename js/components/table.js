@@ -4,7 +4,10 @@
 import { formatCurrency } from "../utils/format.js";
 
 /* -----------------------------------
-   ULTRA COMPACT WIDTH PASS
+   REAL TABLE CONTROL FIX
+   Modes:
+   - card  : dashboard tables auto-fit
+   - grid  : large reports scrollable
 ----------------------------------- */
 
 export function createTable({
@@ -12,7 +15,7 @@ export function createTable({
   meta = "",
   columns = [],
   rows = [],
-  compact = false,
+  mode = "grid",
   minWidth = ""
 } = {}) {
   const box =
@@ -27,13 +30,17 @@ export function createTable({
       <div class="table-meta">${meta}</div>
     </div>
 
-    <div class="table-scroll">
+    <div class="table-scroll ${
+      mode === "card"
+        ? "table-scroll--card"
+        : ""
+    }">
       ${
         rows.length
           ? render(
               columns,
               rows,
-              compact,
+              mode,
               minWidth
             )
           : `
@@ -55,14 +62,19 @@ export function createTable({
 function render(
   cols,
   rows,
-  compact,
+  mode,
   minWidth
 ) {
   return `
     <table
-      class="data-table"
+      class="data-table ${
+        mode === "card"
+          ? "data-table--card"
+          : "data-table--grid"
+      }"
       ${
-        minWidth
+        minWidth &&
+        mode === "grid"
           ? `style="min-width:${minWidth}px"`
           : ""
       }
@@ -73,7 +85,8 @@ function render(
             .map(
               (c) => `
             <th style="width:${w(
-              c
+              c,
+              mode
             )}px">
               ${c.label}
             </th>
@@ -92,7 +105,8 @@ function render(
               .map(
                 (c) => `
               <td style="width:${w(
-                c
+                c,
+                mode
               )}px">
                 ${fmt(
                   row[c.key],
@@ -115,77 +129,117 @@ function render(
    WIDTH ENGINE
 ----------------------------------- */
 
-function w(c) {
+function w(
+  c,
+  mode
+) {
   const k =
     String(
       c.key || ""
     ).toLowerCase();
 
   if (
+    mode === "card"
+  ) {
+    if (
+      k.includes(
+        "brand"
+      ) ||
+      k.includes(
+        "status"
+      )
+    )
+      return 78;
+
+    if (
+      k.includes(
+        "gmv"
+      )
+    )
+      return 70;
+
+    if (
+      k.includes(
+        "asp"
+      )
+    )
+      return 56;
+
+    if (
+      k.includes(
+        "unit"
+      ) ||
+      k.includes(
+        "click"
+      ) ||
+      k.includes(
+        "impr"
+      ) ||
+      k.includes(
+        "atc"
+      )
+    )
+      return 54;
+
+    if (
+      k.includes(
+        "bucket"
+      ) ||
+      k.includes(
+        "range"
+      )
+    )
+      return 64;
+
+    return 60;
+  }
+
+  /* GRID MODE */
+
+  if (
     /^d\d+$/.test(k)
   )
-    return 15;
+    return 26;
 
   if (
     k.includes(
       "style"
     )
   )
-    return 38;
+    return 72;
 
   if (
     k.includes(
       "sku"
     )
   )
-    return 42;
+    return 78;
 
   if (
     k.includes(
       "brand"
     )
   )
-    return 46;
-
-  if (
-    k.includes(
-      "status"
-    )
-  )
-    return 48;
-
-  if (
-    k.includes(
-      "bucket"
-    ) ||
-    k.includes(
-      "range"
-    )
-  )
-    return 32;
+    return 74;
 
   if (
     k.includes(
       "gmv"
     )
   )
-    return 38;
+    return 74;
 
   if (
     k.includes(
       "asp"
     )
   )
-    return 20;
+    return 58;
 
   if (
     k.includes(
       "unit"
-    )
-  )
-    return 16;
-
-  if (
+    ) ||
     k.includes(
       "click"
     ) ||
@@ -196,9 +250,12 @@ function w(c) {
       "atc"
     )
   )
-    return 16;
+    return 54;
 
   if (
+    k.includes(
+      "drr"
+    ) ||
     k.includes(
       "ctr"
     ) ||
@@ -206,26 +263,22 @@ function w(c) {
       "cvr"
     ) ||
     k.includes(
-      "growth"
-    ) ||
-    k.includes(
-      "drr"
-    ) ||
-    k.includes(
       "ret"
+    ) ||
+    k.includes(
+      "growth"
     )
   )
-    return 15;
+    return 48;
 
   if (
     k.includes(
       "rank"
-    ) ||
-    k === "#"
+    )
   )
-    return 12;
+    return 32;
 
-  return 22;
+  return 56;
 }
 
 /* ----------------------------------- */
@@ -240,11 +293,10 @@ function fmt(
   if (
     type ===
     "currency"
-  ) {
+  )
     return formatCurrency(
       n
     );
-  }
 
   if (
     type ===
@@ -286,11 +338,11 @@ function fmt(
 
 /* ----------------------------------- */
 
-let done = false;
+let done=false;
 
 function injectCss() {
-  if (done) return;
-  done = true;
+  if(done)return;
+  done=true;
 
   const s =
     document.createElement(
@@ -309,7 +361,6 @@ function injectCss() {
       padding:8px 10px;
       display:flex;
       justify-content:space-between;
-      align-items:center;
       border-bottom:1px solid #eef2f7;
     }
 
@@ -328,30 +379,42 @@ function injectCss() {
       overflow:auto;
     }
 
+    .table-scroll--card{
+      overflow:hidden;
+    }
+
     .data-table{
-      width:100%;
       border-collapse:collapse;
-      table-layout:fixed;
       font-size:10px;
+    }
+
+    .data-table--grid{
+      width:100%;
+      table-layout:fixed;
+    }
+
+    .data-table--card{
+      width:100%;
+      table-layout:auto;
     }
 
     .data-table th{
       background:#f8fafc;
-      padding:5px 2px;
+      padding:4px 2px;
       text-align:center;
-      white-space:nowrap;
       border-bottom:1px solid #e5e7eb;
+      white-space:nowrap;
       font-weight:800;
     }
 
     .data-table td{
       padding:4px 2px;
       text-align:center;
+      border-bottom:1px solid #f1f5f9;
       white-space:nowrap;
+      font-weight:600;
       overflow:hidden;
       text-overflow:ellipsis;
-      border-bottom:1px solid #f1f5f9;
-      font-weight:600;
     }
 
     .data-table tbody tr:nth-child(even){
