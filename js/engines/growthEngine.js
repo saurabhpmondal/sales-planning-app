@@ -1,177 +1,305 @@
-// REPLACE FILE
+// NEW FILE
 // FILE: js/engines/growthEngine.js
 
 /* -----------------------------------
    FINAL GROWTH ENGINE
-   Projected Current Month GMV
-   vs Previous Month GMV
+   Multi-metric reusable engine
 ----------------------------------- */
 
-export function getGrowthByStyle(
+/* -----------------------------------
+   PUBLIC
+----------------------------------- */
+
+export function getGrowthPack(
   salesRows = [],
   filters = {}
 ) {
-  const selected =
-    filters.month ||
-    "";
+  const ctx =
+    getContext(
+      filters.month
+    );
 
-  if (!selected)
-    return {};
+  const grouped =
+    groupAll(
+      salesRows,
+      ctx
+    );
 
+  return {
+    totalGmvGrowth:
+      calcGrowth(
+        grouped.curTotalGmv,
+        grouped.prevTotalGmv,
+        ctx
+      ),
+
+    totalUnitsGrowth:
+      calcGrowth(
+        grouped.curTotalUnits,
+        grouped.prevTotalUnits,
+        ctx
+      ),
+
+    brandGrowth:
+      mapGrowth(
+        grouped.curBrand,
+        grouped.prevBrand,
+        ctx
+      ),
+
+    styleGrowth:
+      mapGrowth(
+        grouped.curStyle,
+        grouped.prevStyle,
+        ctx
+      )
+  };
+}
+
+/* -----------------------------------
+   CONTEXT
+----------------------------------- */
+
+function getContext(
+  selectedMonth = ""
+) {
   const [
     month,
     yearText
   ] =
-    selected.split(
+    selectedMonth.split(
       " "
     );
 
   const year =
     Number(
       yearText
+    ) || new Date()
+      .getFullYear();
+
+  const months = [
+    "JAN","FEB","MAR","APR",
+    "MAY","JUN","JUL","AUG",
+    "SEP","OCT","NOV","DEC"
+  ];
+
+  let idx =
+    months.indexOf(
+      month
     );
 
-  const prev =
-    getPrev(
-      month,
-      year
-    );
-
-  const daysElapsed =
-    Math.max(
+  if (idx < 0)
+    idx =
       new Date()
-        .getDate() - 1,
+        .getMonth();
+
+  let pIdx =
+    idx - 1;
+
+  let pYear =
+    year;
+
+  if (pIdx < 0) {
+    pIdx = 11;
+    pYear--;
+  }
+
+  const today =
+    new Date();
+
+  const elapsedDays =
+    Math.max(
+      today.getDate() - 1,
       1
     );
 
-  const daysMonth =
-    getMonthDays(
-      month,
-      year
-    );
+  const totalDays =
+    new Date(
+      year,
+      idx + 1,
+      0
+    ).getDate();
 
-  const cur = {};
-  const old = {};
+  return {
+    curMonth:
+      months[idx],
+    curYear: year,
 
-  salesRows.forEach((r) => {
-    const id =
-      r.styleId;
+    prevMonth:
+      months[pIdx],
+    prevYear: pYear,
 
-    if (!id) return;
+    elapsedDays,
+    totalDays
+  };
+}
+
+/* -----------------------------------
+   GROUP DATA
+----------------------------------- */
+
+function groupAll(
+  rows,
+  ctx
+) {
+  const out = {
+    curTotalGmv:0,
+    prevTotalGmv:0,
+
+    curTotalUnits:0,
+    prevTotalUnits:0,
+
+    curBrand:{},
+    prevBrand:{},
+
+    curStyle:{},
+    prevStyle:{}
+  };
+
+  rows.forEach((r)=>{
+    const month =
+      r.month;
+
+    const year =
+      Number(
+        r.year
+      );
 
     const gmv =
       Number(
         r.finalAmount
       ) || 0;
 
-    if (
-      r.month ===
-        month &&
+    const units =
       Number(
-        r.year
-      ) === year
-    ) {
-      cur[id] =
-        (cur[id] || 0) +
+        r.qty
+      ) || 0;
+
+    const brand =
+      r.brand ||
+      "Unknown";
+
+    const style =
+      r.styleId ||
+      "";
+
+    const isCur =
+      month ===
+        ctx.curMonth &&
+      year ===
+        ctx.curYear;
+
+    const isPrev =
+      month ===
+        ctx.prevMonth &&
+      year ===
+        ctx.prevYear;
+
+    if (isCur) {
+      out.curTotalGmv +=
+        gmv;
+
+      out.curTotalUnits +=
+        units;
+
+      out.curBrand[
+        brand
+      ] =
+        (out.curBrand[
+          brand
+        ] || 0) +
+        gmv;
+
+      out.curStyle[
+        style
+      ] =
+        (out.curStyle[
+          style
+        ] || 0) +
         gmv;
     }
 
-    if (
-      r.month ===
-        prev.month &&
-      Number(
-        r.year
-      ) ===
-        prev.year
-    ) {
-      old[id] =
-        (old[id] || 0) +
+    if (isPrev) {
+      out.prevTotalGmv +=
         gmv;
-    }
-  });
 
-  const out = {};
-  const ids =
-    new Set([
-      ...Object.keys(
-        cur
-      ),
-      ...Object.keys(
-        old
-      )
-    ]);
+      out.prevTotalUnits +=
+        units;
 
-  ids.forEach((id) => {
-    const mtd =
-      cur[id] || 0;
+      out.prevBrand[
+        brand
+      ] =
+        (out.prevBrand[
+          brand
+        ] || 0) +
+        gmv;
 
-    const prevGmv =
-      old[id] || 0;
-
-    const proj =
-      (mtd /
-        daysElapsed) *
-      daysMonth;
-
-    if (!prevGmv) {
-      out[id] =
-        proj
-          ? 100
-          : 0;
-    } else {
-      out[id] =
-        ((proj -
-          prevGmv) /
-          prevGmv) *
-        100;
+      out.prevStyle[
+        style
+      ] =
+        (out.prevStyle[
+          style
+        ] || 0) +
+        gmv;
     }
   });
 
   return out;
 }
 
-/* ----------------------------------- */
+/* -----------------------------------
+   CORE CALC
+----------------------------------- */
 
-function getPrev(
-  month,
-  year
+function calcGrowth(
+  curMtd,
+  prevFull,
+  ctx
 ) {
-  const arr = [
-    "JAN","FEB","MAR","APR",
-    "MAY","JUN","JUL","AUG",
-    "SEP","OCT","NOV","DEC"
-  ];
+  const projected =
+    (curMtd /
+      ctx.elapsedDays) *
+    ctx.totalDays;
 
-  let i =
-    arr.indexOf(
-      month
-    ) - 1;
-
-  if (i < 0) {
-    i = 11;
-    year--;
+  if (!prevFull) {
+    return projected
+      ? 100
+      : 0;
   }
 
-  return {
-    month:
-      arr[i],
-    year
-  };
+  return (
+    ((projected -
+      prevFull) /
+      prevFull) *
+    100
+  );
 }
 
-function getMonthDays(
-  month,
-  year
+function mapGrowth(
+  curMap,
+  prevMap,
+  ctx
 ) {
-  const map = {
-    JAN:1,FEB:2,MAR:3,APR:4,
-    MAY:5,JUN:6,JUL:7,AUG:8,
-    SEP:9,OCT:10,NOV:11,DEC:12
-  };
+  const ids =
+    new Set([
+      ...Object.keys(
+        curMap
+      ),
+      ...Object.keys(
+        prevMap
+      )
+    ]);
 
-  return new Date(
-    year,
-    map[month],
-    0
-  ).getDate();
+  const out = {};
+
+  ids.forEach((k)=>{
+    out[k] =
+      calcGrowth(
+        curMap[k] || 0,
+        prevMap[k] || 0,
+        ctx
+      );
+  });
+
+  return out;
 }
