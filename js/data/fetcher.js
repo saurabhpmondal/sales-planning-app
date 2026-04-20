@@ -4,123 +4,87 @@
 import { DATA_SOURCES } from "../config/dataSources.js";
 
 /* -----------------------------------
-   FAST LOADER ARCHITECTURE
-   Phase 1 = critical files
-   Phase 2 = traffic async
+   LOAD ALL FILES TOGETHER
 ----------------------------------- */
 
 export async function loadAllSources() {
-  const core = {};
-  const traffic = [];
+  updateLoader(
+    "Connecting data sources..."
+  );
 
-  /* -------------------------------
-     PHASE 1 : CORE DATA
-  -------------------------------- */
-  for (const item of DATA_SOURCES) {
-    if (
-      item.key ===
-      "traffic"
-    ) {
-      continue;
-    }
+  const jobs =
+    DATA_SOURCES.map(
+      async (item) => {
+        try {
+          updateLoader(
+            `Loading ${item.label}...`
+          );
 
-    updateLoader(
-      `Loading ${item.label}...`
+          const rows =
+            await fetchCsv(
+              item.url
+            );
+
+          return {
+            key: item.key,
+            rows
+          };
+        } catch (error) {
+          console.error(
+            item.key,
+            error
+          );
+
+          return {
+            key: item.key,
+            rows: []
+          };
+        }
+      }
     );
 
-    try {
-      const rows =
-        await fetchCsv(
-          item.url
-        );
+  const result =
+    await Promise.all(
+      jobs
+    );
 
-      core[item.key] =
-        rows;
-    } catch (error) {
-      console.error(
-        `Failed: ${item.key}`,
-        error
-      );
+  const output = {};
 
-      core[item.key] =
-        [];
+  result.forEach(
+    (item) => {
+      output[
+        item.key
+      ] = item.rows;
     }
-  }
+  );
 
-  /* -------------------------------
-     PHASE 2 : TRAFFIC BACKGROUND
-  -------------------------------- */
-  loadTrafficAsync(
-    DATA_SOURCES.find(
-      (x) =>
-        x.key ===
-        "traffic"
-    )
+  updateLoader(
+    "Data loaded successfully..."
   );
 
   return {
     saleData:
-      core.saleData ||
+      output.saleData ||
       [],
     returnData:
-      core.returnData ||
+      output.returnData ||
+      [],
+    traffic:
+      output.traffic ||
       [],
     sjitStock:
-      core.sjitStock ||
+      output.sjitStock ||
       [],
     sorStock:
-      core.sorStock ||
+      output.sorStock ||
       [],
     sellerStock:
-      core.sellerStock ||
+      output.sellerStock ||
       [],
     productMaster:
-      core.productMaster ||
-      [],
-    traffic
+      output.productMaster ||
+      []
   };
-}
-
-/* -----------------------------------
-   BACKGROUND TRAFFIC
------------------------------------ */
-
-async function loadTrafficAsync(
-  item
-) {
-  if (!item) return;
-
-  try {
-    console.log(
-      "Loading traffic in background..."
-    );
-
-    const rows =
-      await fetchCsv(
-        item.url
-      );
-
-    window.__TRAFFIC_DATA__ =
-      rows;
-
-    window.dispatchEvent(
-      new CustomEvent(
-        "trafficLoaded",
-        {
-          detail: rows
-        }
-      )
-    );
-
-    console.log(
-      "Traffic loaded."
-    );
-  } catch (error) {
-    console.error(
-      "Traffic failed:",
-      error
-    );
-  }
 }
 
 /* -----------------------------------
@@ -130,25 +94,11 @@ async function loadTrafficAsync(
 async function fetchCsv(
   url
 ) {
-  const controller =
-    new AbortController();
-
-  const timer =
-    setTimeout(() => {
-      controller.abort();
-    }, 25000);
-
   const res =
     await fetch(url, {
-      signal:
-        controller.signal,
       cache:
         "no-store"
     });
-
-  clearTimeout(
-    timer
-  );
 
   if (!res.ok) {
     throw new Error(
@@ -180,7 +130,7 @@ function parseCsv(
     return [];
 
   const headers =
-    splitCsvLine(
+    splitLine(
       lines[0]
     );
 
@@ -192,15 +142,15 @@ function parseCsv(
     i++
   ) {
     const values =
-      splitCsvLine(
+      splitLine(
         lines[i]
       );
 
     const row = {};
 
     headers.forEach(
-      (key, idx) => {
-        row[key] =
+      (h, idx) => {
+        row[h] =
           values[
             idx
           ] || "";
@@ -213,13 +163,13 @@ function parseCsv(
   return rows;
 }
 
-function splitCsvLine(
+function splitLine(
   line = ""
 ) {
   const out = [];
-  let current =
+  let cur =
     "";
-  let inside =
+  let quote =
     false;
 
   for (
@@ -233,27 +183,26 @@ function splitCsvLine(
     if (
       ch === '"'
     ) {
-      inside =
-        !inside;
+      quote =
+        !quote;
       continue;
     }
 
     if (
       ch === "," &&
-      !inside
+      !quote
     ) {
       out.push(
-        current
+        cur
       );
-      current =
-        "";
+      cur = "";
       continue;
     }
 
-    current += ch;
+    cur += ch;
   }
 
-  out.push(current);
+  out.push(cur);
 
   return out.map(
     (x) =>
@@ -262,11 +211,11 @@ function splitCsvLine(
 }
 
 /* -----------------------------------
-   UI LOADER TEXT
+   UI
 ----------------------------------- */
 
 function updateLoader(
-  msg
+  text
 ) {
   const el =
     document.querySelector(
@@ -275,6 +224,6 @@ function updateLoader(
 
   if (el) {
     el.textContent =
-      msg;
+      text;
   }
 }
