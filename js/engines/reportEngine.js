@@ -1,6 +1,8 @@
+// REPLACE FILE
 // FILE: js/engines/reportEngine.js
 
 import { getFilteredData } from "./filterEngine.js";
+
 import {
   getSalesSummary,
   getSalesByStyle,
@@ -25,25 +27,35 @@ import {
   getTrafficByBrand
 } from "./trafficEngine.js";
 
-import { getDrrByStyle } from "./drrEngine.js";
-import { getGrowthByStyle } from "./growthEngine.js";
+import {
+  getDrrByStyle
+} from "./drrEngine.js";
+
+import {
+  getGrowthByStyle
+} from "./growthEngine.js";
 
 /* -----------------------------------
    MASTER REPORT ENGINE
-   Reusable joined metrics
+   Central reusable joined metrics
 ----------------------------------- */
 
 export function buildReportData(
   store,
   filters = {}
 ) {
+  /* --------------------------------
+     FILTER DATASETS
+  -------------------------------- */
   const filtered =
     getFilteredData(
       store,
       filters
     );
 
-  /* SALES */
+  /* --------------------------------
+     SALES
+  -------------------------------- */
   const salesSummary =
     getSalesSummary(
       filtered.sales
@@ -64,11 +76,14 @@ export function buildReportData(
       filtered.sales
     );
 
-  /* RETURNS */
+  /* --------------------------------
+     RETURNS
+  -------------------------------- */
   const returnRows =
     getReturnRowsForSalesWindow(
       filtered.sales,
-      filtered.returns
+      filtered.returns,
+      filters
     );
 
   const returnSummary =
@@ -88,7 +103,9 @@ export function buildReportData(
       salesByStyle
     );
 
-  /* STOCK */
+  /* --------------------------------
+     STOCK
+  -------------------------------- */
   const sjitStockByStyle =
     getSjitStockByStyle(
       filtered.sjitStock
@@ -99,7 +116,9 @@ export function buildReportData(
       filtered.sorStock
     );
 
-  /* TRAFFIC */
+  /* --------------------------------
+     TRAFFIC
+  -------------------------------- */
   const trafficByStyle =
     getTrafficByStyle(
       filtered.traffic
@@ -110,19 +129,26 @@ export function buildReportData(
       filtered.traffic
     );
 
-  /* DRR */
+  /* --------------------------------
+     DEMAND
+  -------------------------------- */
   const drrByStyle =
     getDrrByStyle(
       filtered.sales
     );
 
-  /* GROWTH */
+  /* --------------------------------
+     GROWTH
+  -------------------------------- */
   const growthByStyle =
     getGrowthByStyle(
       filtered.sales,
       filters
     );
 
+  /* --------------------------------
+     FINAL
+  -------------------------------- */
   return {
     filtered,
 
