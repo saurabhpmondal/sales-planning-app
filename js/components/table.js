@@ -4,7 +4,7 @@
 import { formatCurrency } from "../utils/format.js";
 
 /* -----------------------------------
-   FINAL WIDTH TUNED ENGINE
+   FINAL WIDTH + COLOR ENGINE
 ----------------------------------- */
 
 export function createTable({
@@ -60,9 +60,7 @@ function render(cols,rows,mode,minWidth){
         ${rows.map(r=>`
           <tr>
             ${cols.map(c=>`
-              <td style="width:${w(c,mode)}px">
-                ${fmt(r[c.key],c.format)}
-              </td>
+              ${cell(r,c)}
             `).join("")}
           </tr>
         `).join("")}
@@ -72,13 +70,40 @@ function render(cols,rows,mode,minWidth){
 }
 
 /* ----------------------------------- */
+/* 🔥 CELL WITH COLOR LOGIC */
+/* ----------------------------------- */
+
+function cell(r,c){
+
+  const k=c.key;
+  const val=r[k];
+
+  let cls="";
+
+  /* Detect day columns */
+  if(/^d\d+$/.test(k)){
+    const day=Number(k.slice(1));
+    const prev=r["d"+(day-1)];
+
+    if(prev!==undefined){
+      if(val>prev) cls="cell-up";
+      else if(val<prev) cls="cell-down";
+    }
+  }
+
+  return `
+    <td class="${cls}" style="width:${w(c)}px">
+      ${fmt(val,c.format)}
+    </td>
+  `;
+}
+
+/* ----------------------------------- */
 
 function w(c,mode){
   const k=String(c.key||"").toLowerCase();
 
-  /* DASHBOARD */
   if(mode==="card"){
-
     if(k.includes("brand")) return 44;
     if(k.includes("status")) return 52;
     if(k.includes("bucket")) return 42;
@@ -89,11 +114,8 @@ function w(c,mode){
     if(k.includes("click")) return 32;
     if(k.includes("impr")) return 38;
     if(k.includes("atc")) return 28;
-
     return 36;
   }
-
-  /* REPORT GRID */
 
   if(/^d\d+$/.test(k)) return 22;
 
@@ -106,7 +128,6 @@ function w(c,mode){
   if(k.includes("unit")) return 32;
   if(k.includes("asp")) return 32;
   if(k.includes("ret")) return 24;
-  if(k.includes("gr")) return 24;
   if(k.includes("drr")) return 22;
   if(k.includes("sjit")) return 26;
   if(k.includes("sor")) return 26;
@@ -173,10 +194,6 @@ function injectCss(){
       overflow:auto;
     }
 
-    .table-scroll--card{
-      overflow:hidden;
-    }
-
     .data-table{
       border-collapse:collapse;
       font-size:10px;
@@ -187,17 +204,11 @@ function injectCss(){
       table-layout:fixed;
     }
 
-    .data-table--card{
-      width:100%;
-      table-layout:auto;
-    }
-
     .data-table th{
       background:#f8fafc;
       padding:4px 1px;
       text-align:center;
       border-bottom:1px solid #e5e7eb;
-      white-space:nowrap;
       font-weight:800;
     }
 
@@ -205,14 +216,24 @@ function injectCss(){
       padding:3px 1px;
       text-align:center;
       border-bottom:1px solid #f1f5f9;
-      white-space:nowrap;
       font-weight:600;
-      overflow:hidden;
-      text-overflow:ellipsis;
     }
 
     .data-table tbody tr:nth-child(even){
       background:#fcfcfd;
+    }
+
+    /* 🔥 COLOR LOGIC */
+    .cell-up{
+      background:#ecfdf5;
+      color:#16a34a;
+      font-weight:800;
+    }
+
+    .cell-down{
+      background:#fef2f2;
+      color:#dc2626;
+      font-weight:800;
     }
 
     .table-empty{
