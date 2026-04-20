@@ -4,7 +4,6 @@ import { TAB_IDS } from "../core/constants.js";
 
 /* -----------------------------------
    TAB CONFIGURATION
-   Add / remove / hide tabs here only
 ----------------------------------- */
 
 export const TABS_CONFIG = [
@@ -70,5 +69,9 @@ export function getEnabledTabs() {
 }
 
 export function getTabById(id) {
-  return TABS_CONFIG.find((tab) => tab.id === id) || null;
+  return (
+    TABS_CONFIG.find(
+      (tab) => tab.id === id
+    ) || null
+  );
 }
