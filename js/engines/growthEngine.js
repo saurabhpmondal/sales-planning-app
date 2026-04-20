@@ -1,304 +1,170 @@
-// NEW FILE
-// FILE: js/engines/growthEngine.js
+// FULL REPLACEMENT FILE
 
 /* -----------------------------------
-   FINAL GROWTH ENGINE
-   Multi-metric reusable engine
------------------------------------ */
-
-/* -----------------------------------
-   PUBLIC
+   FINAL GROWTH ENGINE (CLEAN + SAFE)
 ----------------------------------- */
 
 export function getGrowthPack(
   salesRows = [],
   filters = {}
 ) {
-  const ctx =
-    getContext(
-      filters.month
-    );
+  const ctx = getContext(filters.month);
 
-  const grouped =
-    groupAll(
-      salesRows,
-      ctx
-    );
+  const grouped = groupAll(
+    salesRows,
+    ctx
+  );
 
   return {
-    totalGmvGrowth:
-      calcGrowth(
-        grouped.curTotalGmv,
-        grouped.prevTotalGmv,
-        ctx
-      ),
+    totalGmvGrowth: calcGrowth(
+      grouped.curTotalGmv,
+      grouped.prevTotalGmv,
+      ctx
+    ),
 
-    totalUnitsGrowth:
-      calcGrowth(
-        grouped.curTotalUnits,
-        grouped.prevTotalUnits,
-        ctx
-      ),
+    totalUnitsGrowth: calcGrowth(
+      grouped.curTotalUnits,
+      grouped.prevTotalUnits,
+      ctx
+    ),
 
-    brandGrowth:
-      mapGrowth(
-        grouped.curBrand,
-        grouped.prevBrand,
-        ctx
-      ),
+    brandGrowth: mapGrowth(
+      grouped.curBrand,
+      grouped.prevBrand,
+      ctx
+    ),
 
-    styleGrowth:
-      mapGrowth(
-        grouped.curStyle,
-        grouped.prevStyle,
-        ctx
-      )
+    styleGrowth: mapGrowth(
+      grouped.curStyle,
+      grouped.prevStyle,
+      ctx
+    )
   };
 }
 
-/* -----------------------------------
-   CONTEXT
------------------------------------ */
+/* ----------------------------------- */
 
-function getContext(
-  selectedMonth = ""
-) {
-  const [
-    month,
-    yearText
-  ] =
-    selectedMonth.split(
-      " "
-    );
-
-  const year =
-    Number(
-      yearText
-    ) || new Date()
-      .getFullYear();
-
+function getContext(monthStr="") {
   const months = [
-    "JAN","FEB","MAR","APR",
-    "MAY","JUN","JUL","AUG",
-    "SEP","OCT","NOV","DEC"
+    "JAN","FEB","MAR","APR","MAY","JUN",
+    "JUL","AUG","SEP","OCT","NOV","DEC"
   ];
 
-  let idx =
-    months.indexOf(
-      month
-    );
+  const [m,y] = monthStr.split(" ");
+  let idx = months.indexOf(m);
+  let year = +y || new Date().getFullYear();
 
-  if (idx < 0)
-    idx =
-      new Date()
-        .getMonth();
-
-  let pIdx =
-    idx - 1;
-
-  let pYear =
-    year;
-
-  if (pIdx < 0) {
-    pIdx = 11;
-    pYear--;
+  if(idx<0){
+    idx = new Date().getMonth();
   }
 
-  const today =
-    new Date();
+  let prevIdx = idx-1;
+  let prevYear = year;
 
-  const elapsedDays =
-    Math.max(
-      today.getDate() - 1,
-      1
-    );
+  if(prevIdx<0){
+    prevIdx=11;
+    prevYear--;
+  }
 
-  const totalDays =
-    new Date(
-      year,
-      idx + 1,
-      0
-    ).getDate();
+  const today = new Date();
 
   return {
-    curMonth:
-      months[idx],
+    curMonth: months[idx],
     curYear: year,
-
-    prevMonth:
-      months[pIdx],
-    prevYear: pYear,
-
-    elapsedDays,
-    totalDays
+    prevMonth: months[prevIdx],
+    prevYear,
+    elapsedDays: Math.max(today.getDate()-1,1),
+    totalDays: new Date(year, idx+1, 0).getDate()
   };
 }
 
-/* -----------------------------------
-   GROUP DATA
------------------------------------ */
+/* ----------------------------------- */
 
-function groupAll(
-  rows,
-  ctx
-) {
+function groupAll(rows,ctx){
+
   const out = {
     curTotalGmv:0,
     prevTotalGmv:0,
-
     curTotalUnits:0,
     prevTotalUnits:0,
-
     curBrand:{},
     prevBrand:{},
-
     curStyle:{},
     prevStyle:{}
   };
 
-  rows.forEach((r)=>{
-    const month =
-      r.month;
+  rows.forEach(r=>{
 
-    const year =
-      Number(
-        r.year
-      );
-
-    const gmv =
-      Number(
-        r.finalAmount
-      ) || 0;
-
-    const units =
-      Number(
-        r.qty
-      ) || 0;
-
-    const brand =
-      r.brand ||
-      "Unknown";
-
-    const style =
-      r.styleId ||
-      "";
+    const g = +r.finalAmount || 0;
+    const u = +r.qty || 0;
 
     const isCur =
-      month ===
-        ctx.curMonth &&
-      year ===
-        ctx.curYear;
+      r.month===ctx.curMonth &&
+      +r.year===ctx.curYear;
 
     const isPrev =
-      month ===
-        ctx.prevMonth &&
-      year ===
-        ctx.prevYear;
+      r.month===ctx.prevMonth &&
+      +r.year===ctx.prevYear;
 
-    if (isCur) {
-      out.curTotalGmv +=
-        gmv;
+    if(isCur){
+      out.curTotalGmv+=g;
+      out.curTotalUnits+=u;
 
-      out.curTotalUnits +=
-        units;
+      out.curBrand[r.brand] =
+        (out.curBrand[r.brand]||0)+g;
 
-      out.curBrand[
-        brand
-      ] =
-        (out.curBrand[
-          brand
-        ] || 0) +
-        gmv;
-
-      out.curStyle[
-        style
-      ] =
-        (out.curStyle[
-          style
-        ] || 0) +
-        gmv;
+      out.curStyle[r.styleId] =
+        (out.curStyle[r.styleId]||0)+g;
     }
 
-    if (isPrev) {
-      out.prevTotalGmv +=
-        gmv;
+    if(isPrev){
+      out.prevTotalGmv+=g;
+      out.prevTotalUnits+=u;
 
-      out.prevTotalUnits +=
-        units;
+      out.prevBrand[r.brand] =
+        (out.prevBrand[r.brand]||0)+g;
 
-      out.prevBrand[
-        brand
-      ] =
-        (out.prevBrand[
-          brand
-        ] || 0) +
-        gmv;
-
-      out.prevStyle[
-        style
-      ] =
-        (out.prevStyle[
-          style
-        ] || 0) +
-        gmv;
+      out.prevStyle[r.styleId] =
+        (out.prevStyle[r.styleId]||0)+g;
     }
+
   });
 
   return out;
 }
 
-/* -----------------------------------
-   CORE CALC
------------------------------------ */
+/* ----------------------------------- */
 
-function calcGrowth(
-  curMtd,
-  prevFull,
-  ctx
-) {
+function calcGrowth(cur,prev,ctx){
+
   const projected =
-    (curMtd /
-      ctx.elapsedDays) *
+    (cur/ctx.elapsedDays)*
     ctx.totalDays;
 
-  if (!prevFull) {
-    return projected
-      ? 100
-      : 0;
+  if(!prev){
+    return projected ? 100 : 0;
   }
 
   return (
-    ((projected -
-      prevFull) /
-      prevFull) *
-    100
-  );
+    (projected-prev)/prev
+  )*100;
 }
 
-function mapGrowth(
-  curMap,
-  prevMap,
-  ctx
-) {
-  const ids =
-    new Set([
-      ...Object.keys(
-        curMap
-      ),
-      ...Object.keys(
-        prevMap
-      )
-    ]);
+function mapGrowth(curMap,prevMap,ctx){
+
+  const keys = new Set([
+    ...Object.keys(curMap),
+    ...Object.keys(prevMap)
+  ]);
 
   const out = {};
 
-  ids.forEach((k)=>{
-    out[k] =
-      calcGrowth(
-        curMap[k] || 0,
-        prevMap[k] || 0,
-        ctx
-      );
+  keys.forEach(k=>{
+    out[k] = calcGrowth(
+      curMap[k]||0,
+      prevMap[k]||0,
+      ctx
+    );
   });
 
   return out;
