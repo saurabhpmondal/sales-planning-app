@@ -1,15 +1,26 @@
+// REPLACE FILE
 // FILE: js/engines/filterEngine.js
 
 import { parseMonthYear } from "../utils/dates.js";
+import { getFilters } from "../core/state.js";
 
 /* -----------------------------------
-   MAIN FILTER ENGINE
+   FILTER ENGINE
+   Fixed:
+   - default current month
+   - proper month filtering
+   - date range within month
 ----------------------------------- */
 
 export function getFilteredData(
   store,
-  filters = {}
+  inputFilters = {}
 ) {
+  const filters = {
+    ...getFilters(),
+    ...inputFilters
+  };
+
   return {
     sales: filterSales(
       store.sales || [],
@@ -27,25 +38,29 @@ export function getFilteredData(
     ),
 
     sjitStock:
-      filterByBrandViaMaster(
-        store.sjitStock || [],
+      filterStock(
+        store.sjitStock ||
+          [],
         store,
         filters
       ),
 
     sorStock:
-      filterByBrandViaMaster(
-        store.sorStock || [],
+      filterStock(
+        store.sorStock ||
+          [],
         store,
         filters
       ),
 
     sellerStock:
-      store.sellerStock || [],
+      store.sellerStock ||
+      [],
 
     productMaster:
-      filterProductMaster(
-        store.productMaster || [],
+      filterMaster(
+        store.productMaster ||
+          [],
         filters
       )
   };
@@ -61,25 +76,25 @@ function filterSales(
 ) {
   return rows.filter(
     (row) =>
-      monthMatch(
+      monthOk(
         row,
         filters
       ) &&
-      dateMatch(
+      dateOk(
         row,
         filters
       ) &&
-      brandMatch(
+      brandOk(
         row.brand,
         filters
       ) &&
-      poTypeMatch(
+      poOk(
         row.poType,
         filters
       ) &&
-      searchMatch(
+      searchOk(
         row.styleId,
-        row,
+        row.erpSku,
         filters
       )
   );
@@ -95,17 +110,17 @@ function filterReturns(
 ) {
   return rows.filter(
     (row) =>
-      monthMatch(
+      monthOk(
         row,
         filters
       ) &&
-      dateMatch(
+      dateOk(
         row,
         filters
       ) &&
-      searchMatch(
+      searchOk(
         row.styleId,
-        row,
+        "",
         filters
       )
   );
@@ -113,7 +128,6 @@ function filterReturns(
 
 /* -----------------------------------
    TRAFFIC
-   no date logic
 ----------------------------------- */
 
 function filterTraffic(
@@ -122,45 +136,45 @@ function filterTraffic(
 ) {
   return rows.filter(
     (row) =>
-      brandMatch(
+      brandOk(
         row.brand,
         filters
       ) &&
-      searchMatch(
+      searchOk(
         row.styleId,
-        row,
+        "",
         filters
       )
   );
 }
 
 /* -----------------------------------
-   PRODUCT MASTER
+   MASTER
 ----------------------------------- */
 
-function filterProductMaster(
+function filterMaster(
   rows,
   filters
 ) {
   return rows.filter(
     (row) =>
-      brandMatch(
+      brandOk(
         row.brand,
         filters
       ) &&
-      searchMatch(
+      searchOk(
         row.styleId,
-        row,
+        row.erpSku,
         filters
       )
   );
 }
 
 /* -----------------------------------
-   STOCK WITH BRAND
+   STOCK
 ----------------------------------- */
 
-function filterByBrandViaMaster(
+function filterStock(
   rows,
   store,
   filters
@@ -189,7 +203,7 @@ function filterByBrandViaMaster(
    MATCHERS
 ----------------------------------- */
 
-function monthMatch(
+function monthOk(
   row,
   filters
 ) {
@@ -217,17 +231,10 @@ function monthMatch(
   );
 }
 
-function dateMatch(
+function dateOk(
   row,
   filters
 ) {
-  if (
-    !filters.startDate &&
-    !filters.endDate
-  ) {
-    return true;
-  }
-
   const day =
     Number(row.date);
 
@@ -235,9 +242,11 @@ function dateMatch(
     filters.startDate
   ) {
     const start =
-      new Date(
-        filters.startDate
-      ).getDate();
+      Number(
+        filters.startDate.split(
+          "-"
+        )[2]
+      );
 
     if (day < start)
       return false;
@@ -247,9 +256,11 @@ function dateMatch(
     filters.endDate
   ) {
     const end =
-      new Date(
-        filters.endDate
-      ).getDate();
+      Number(
+        filters.endDate.split(
+          "-"
+        )[2]
+      );
 
     if (day > end)
       return false;
@@ -258,12 +269,11 @@ function dateMatch(
   return true;
 }
 
-function brandMatch(
+function brandOk(
   brand,
   filters
 ) {
   return (
-    !filters.brand ||
     filters.brand ===
       "ALL" ||
     brand ===
@@ -271,22 +281,21 @@ function brandMatch(
   );
 }
 
-function poTypeMatch(
-  poType,
+function poOk(
+  po,
   filters
 ) {
   return (
-    !filters.poType ||
     filters.poType ===
       "ALL" ||
-    poType ===
+    po ===
       filters.poType
   );
 }
 
-function searchMatch(
+function searchOk(
   styleId,
-  row,
+  sku,
   filters
 ) {
   const q =
@@ -299,14 +308,11 @@ function searchMatch(
 
   if (!q) return true;
 
-  const erpSku =
-    row.erpSku || "";
-
   return (
     String(styleId)
       .toLowerCase()
       .includes(q) ||
-    String(erpSku)
+    String(sku)
       .toLowerCase()
       .includes(q)
   );
