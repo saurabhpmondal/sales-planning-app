@@ -6,15 +6,11 @@ import { getGrowthPack } from "../engines/growthEngine.js";
 import { createKpiGrid } from "../components/kpiCards.js";
 import { createDashboardTable } from "../components/dashboardTable.js";
 
-export function renderDashboard({
-  el,
-  state
-}) {
-  const data =
-    buildReportData(
-      state.store,
-      state.filters
-    );
+export function renderDashboard({ el, state }) {
+  const data = buildReportData(
+    state.store,
+    state.filters
+  );
 
   const {
     summary,
@@ -28,69 +24,52 @@ export function renderDashboard({
       state.filters
     );
 
-  el.className =
-    "report-page";
+  el.className = "report-page";
 
-  /* -----------------------------------
-     KPI
-  ----------------------------------- */
+  /* ---------------- KPI ---------------- */
 
   el.appendChild(
     createKpiGrid([
       {
         label:"GMV",
-        value:
-          summary.netGmv,
+        value:summary.netGmv,
         format:"currency",
         icon:"₹"
       },
       {
         label:"Units",
-        value:
-          summary.netUnits,
+        value:summary.netUnits,
         icon:"📦"
       },
       {
         label:"Return %",
-        value:
-          summary.returnPercent,
+        value:summary.returnPercent,
         format:"percent",
         icon:"↩"
       },
       {
         label:"SJIT Stock",
-        value:
-          sum(
-            maps.sjitStockByStyle
-          ),
+        value:sum(maps.sjitStockByStyle),
         icon:"🚚"
       },
       {
         label:"SOR Stock",
-        value:
-          sum(
-            maps.sorStockByStyle
-          ),
+        value:sum(maps.sorStockByStyle),
         icon:"🏬"
       },
       {
         label:"Growth %",
-        value:
-          growth.totalGmvGrowth,
+        value:growth.totalGmvGrowth,
         format:"percent",
         icon:"📈"
       }
     ])
   );
 
-  /* -----------------------------------
-     GRID TABLES
-  ----------------------------------- */
+  /* ---------------- GRID ---------------- */
 
   const grid =
-    document.createElement(
-      "div"
-    );
+    document.createElement("div");
 
   grid.className =
     "dash-grid";
@@ -183,14 +162,12 @@ export function renderDashboard({
     })
   );
 
-  el.appendChild(
-    grid
-  );
+  el.appendChild(grid);
 
   injectCss();
 }
 
-/* ----------------------------------- */
+/* ---------------- HELPERS ---------------- */
 
 function brandRows(map={}) {
   return Object.entries(map)
@@ -212,12 +189,93 @@ function poRows(map={}) {
     }));
 }
 
-function priceRows(){
-  return [];
+function priceRows(map={},store={}) {
+
+  const buckets = [
+    [0,300,"0-300"],
+    [301,600,"301-600"],
+    [601,800,"601-800"],
+    [801,1000,"801-1000"],
+    [1001,1500,"1001-1500"],
+    [1501,2000,"1501-2000"],
+    [2001,999999,">2000"]
+  ];
+
+  return buckets.map(b=>{
+
+    let units = 0;
+    const brands = {};
+
+    Object.entries(map).forEach(([id,v])=>{
+
+      const asp =
+        +v.asp || 0;
+
+      if(
+        asp >= b[0] &&
+        asp <= b[1]
+      ){
+        units +=
+          +v.netUnits || 0;
+
+        const brand =
+          store.lookups
+            ?.productByStyle?.[id]
+            ?.brand || "";
+
+        brands[brand] =
+          (brands[brand]||0) +
+          (+v.netUnits||0);
+      }
+    });
+
+    const top =
+      Object.entries(brands)
+        .sort((a,b)=>b[1]-a[1])[0]?.[0] || "";
+
+    return {
+      bucket:b[2],
+      units,
+      brand:top
+    };
+  });
 }
 
-function erpRows(){
-  return [];
+function erpRows(map={},store={}) {
+
+  const out = {};
+
+  Object.entries(map).forEach(([id,v])=>{
+
+    const status =
+      store.lookups
+        ?.productByStyle?.[id]
+        ?.status || "Blank";
+
+    if(!out[status]){
+      out[status]={
+        gmv:0,
+        units:0
+      };
+    }
+
+    out[status].gmv +=
+      +v.netGmv || 0;
+
+    out[status].units +=
+      +v.netUnits || 0;
+  });
+
+  return Object.entries(out)
+    .map(([k,v])=>({
+      status:k,
+      gmv:v.gmv,
+      units:v.units,
+      asp:
+        v.units
+        ? v.gmv/v.units
+        : 0
+    }));
 }
 
 function stockRows(){
@@ -231,7 +289,7 @@ function stockRows(){
   ];
 }
 
-function trafficRows(map={}){
+function trafficRows(map={}) {
   return Object.entries(map)
     .map(([k,v])=>({
       brand:k,
@@ -241,29 +299,26 @@ function trafficRows(map={}){
     }));
 }
 
-function sum(map={}){
+function sum(map={}) {
   return Object.values(map)
     .reduce((a,b)=>a+(+b||0),0);
 }
 
-/* ----------------------------------- */
+/* ---------------- CSS ---------------- */
 
-let done=false;
+let done = false;
 
 function injectCss(){
-  if(done)return;
-  done=true;
+  if(done) return;
+  done = true;
 
-  const s=
-    document.createElement(
-      "style"
-    );
+  const s =
+    document.createElement("style");
 
-  s.textContent=`
+  s.textContent = `
     .dash-grid{
       display:grid;
-      grid-template-columns:
-        repeat(2,minmax(0,1fr));
+      grid-template-columns:repeat(2,minmax(0,1fr));
       gap:12px;
     }
 
