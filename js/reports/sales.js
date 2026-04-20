@@ -2,49 +2,84 @@
 // FILE: js/reports/sales.js
 
 import { buildReportData } from "../engines/reportEngine.js";
-import { getGrowthPack } from "../engines/growthEngine.js";
 import { createTable } from "../components/table.js";
 
 /* -----------------------------------
    SALES REPORT
-   FIXED:
-   - Past month projected GMV = actual GMV
-   - Current month projected live
+   FORWARD BUILD ONLY
+   Keeps Lazy Load + fixes Proj GMV
 ----------------------------------- */
+
+const PAGE_SIZE = 50;
+let page = 1;
 
 export function renderSales({
   el,
   state
 }) {
-  const data = buildReportData(
-    state.store,
-    state.filters
-  );
+  const data =
+    buildReportData(
+      state.store,
+      state.filters
+    );
 
-  const growth = getGrowthPack(
-    data.filtered.sales || [],
-    state.filters
-  );
+  const rows =
+    buildRows(
+      data,
+      state.store,
+      state.filters.month
+    );
 
-  const rows = buildRows(
-    data,
-    state.store,
-    growth.styleGrowth,
-    state.filters.month
-  );
+  const visible =
+    rows.slice(
+      0,
+      PAGE_SIZE * page
+    );
 
-  el.className = "report-page";
+  el.className =
+    "report-page";
+
+  el.innerHTML = "";
 
   el.appendChild(
     createTable({
-      title: "Sales Report",
-      meta: `${rows.length} styles`,
-      mode: "grid",
-      minWidth: 2300,
-      columns: cols(),
-      rows
+      title:"Sales Report",
+      meta:`${visible.length}/${rows.length} styles`,
+      mode:"grid",
+      minWidth:2300,
+      columns:cols(),
+      rows:visible
     })
   );
+
+  if (
+    visible.length <
+    rows.length
+  ) {
+    const btn =
+      document.createElement(
+        "button"
+      );
+
+    btn.className =
+      "load-more-btn";
+
+    btn.textContent =
+      "Load More";
+
+    btn.onclick =
+      ()=>{
+        page++;
+        renderSales({
+          el,
+          state
+        });
+      };
+
+    el.appendChild(btn);
+  }
+
+  injectCss();
 }
 
 /* ----------------------------------- */
@@ -52,91 +87,119 @@ export function renderSales({
 function buildRows(
   data,
   store,
-  styleGrowth = {},
-  monthStr = ""
+  monthStr=""
 ) {
-  const ids = Object.keys(
-    data.maps.salesByStyle || {}
-  );
+  const ids =
+    Object.keys(
+      data.maps
+        .salesByStyle || {}
+    );
 
-  const currentMonth =
-    isCurrentMonth(monthStr);
+  const current =
+    isCurrentMonth(
+      monthStr
+    );
 
   const elapsed =
     Math.max(
-      new Date().getDate() - 1,
+      new Date()
+        .getDate()-1,
       1
     );
 
   const totalDays =
-    currentMonth
-      ? getMonthDays(monthStr)
-      : 0;
+    getMonthDays(
+      monthStr
+    );
 
-  const rows = ids.map(id => {
-    const s =
-      data.maps.salesByStyle[id] || {};
+  const rows =
+    ids.map((id)=>{
 
-    const t =
-      data.maps.trafficByStyle[id] || {};
-
-    const pm =
-      store.lookups
-        ?.productByStyle?.[id] || {};
-
-    const gmv =
-      s.netGmv || 0;
-
-    const units =
-      s.netUnits || 0;
-
-    const projected =
-      currentMonth
-        ? (gmv / elapsed) * totalDays
-        : gmv;
-
-    const clicks =
-      t.clicks || 0;
-
-    return {
-      rank: 0,
-      styleId: id,
-      erpSku: pm.erpSku || "",
-      brand: pm.brand || "",
-      rating: t.rating || 0,
-
-      gmv,
-      projGmv: projected,
-      units,
-      asp: s.asp || 0,
-
-      ret:
+      const s =
         data.maps
-          .returnPercentByStyle?.[id] || 0,
+          .salesByStyle[id] || {};
 
-      growth:
-        styleGrowth[id] || 0,
-
-      drr:
+      const t =
         data.maps
-          .drrByStyle?.[id] || 0,
+          .trafficByStyle[id] || {};
 
-      sjit:
-        data.maps
-          .sjitStockByStyle?.[id] || 0,
+      const p =
+        store.lookups
+          ?.productByStyle?.[id] || {};
 
-      sor:
-        data.maps
-          .sorStockByStyle?.[id] || 0
-    };
-  });
+      const gmv =
+        s.netGmv || 0;
+
+      const units =
+        s.netUnits || 0;
+
+      const proj =
+        current
+          ? (gmv/elapsed)*totalDays
+          : gmv;
+
+      const clicks =
+        t.clicks || 0;
+
+      return {
+        rank:0,
+        styleId:id,
+        erpSku:
+          p.erpSku || "",
+        brand:
+          p.brand || "",
+        rating:
+          t.rating || 0,
+
+        gmv,
+        proj,
+
+        units,
+        asp:
+          s.asp || 0,
+
+        ret:
+          data.maps
+            .returnPercentByStyle?.[id] || 0,
+
+        drr:
+          data.maps
+            .drrByStyle?.[id] || 0,
+
+        sjit:
+          data.maps
+            .sjitStockByStyle?.[id] || 0,
+
+        sor:
+          data.maps
+            .sorStockByStyle?.[id] || 0,
+
+        imp:
+          t.impressions || 0,
+
+        clicks,
+
+        atc:
+          t.addToCarts || 0,
+
+        ctr:
+          t.ctr || 0,
+
+        cvr:
+          clicks
+            ? (units/clicks)*100
+            : 0
+      };
+    });
 
   rows.sort(
-    (a, b) => b.units - a.units
+    (a,b)=>
+      b.units-a.units
   );
 
   rows.forEach(
-    (r, i) => r.rank = i + 1
+    (r,i)=>
+      r.rank=i+1
   );
 
   return rows;
@@ -144,33 +207,36 @@ function buildRows(
 
 /* ----------------------------------- */
 
-function cols() {
+function cols(){
   return [
-    { key:"rank", label:"#", format:"number" },
-    { key:"styleId", label:"Style" },
-    { key:"erpSku", label:"SKU" },
-    { key:"brand", label:"Brand" },
-    { key:"rating", label:"Rate", format:"number" },
-
-    { key:"gmv", label:"GMV", format:"currency" },
-    { key:"projGmv", label:"Proj GMV", format:"currency" },
-
-    { key:"units", label:"Units", format:"number" },
-    { key:"asp", label:"ASP", format:"currency" },
-
-    { key:"ret", label:"Ret%", format:"percent" },
-    { key:"growth", label:"Gr%", format:"percent" },
-
-    { key:"drr", label:"DRR", format:"number" },
-    { key:"sjit", label:"SJIT", format:"number" },
-    { key:"sor", label:"SOR", format:"number" }
+    {key:"rank",label:"#",format:"number"},
+    {key:"styleId",label:"Style"},
+    {key:"erpSku",label:"SKU"},
+    {key:"brand",label:"Brand"},
+    {key:"rating",label:"Rate",format:"number"},
+    {key:"gmv",label:"GMV",format:"currency"},
+    {key:"proj",label:"Proj GMV",format:"currency"},
+    {key:"units",label:"Units",format:"number"},
+    {key:"asp",label:"ASP",format:"currency"},
+    {key:"ret",label:"Ret%",format:"percent"},
+    {key:"drr",label:"DRR",format:"number"},
+    {key:"sjit",label:"SJIT",format:"number"},
+    {key:"sor",label:"SOR",format:"number"},
+    {key:"imp",label:"Imp",format:"number"},
+    {key:"clicks",label:"Clk",format:"number"},
+    {key:"atc",label:"ATC",format:"number"},
+    {key:"ctr",label:"CTR%",format:"percent"},
+    {key:"cvr",label:"CVR%",format:"percent"}
   ];
 }
 
 /* ----------------------------------- */
 
-function isCurrentMonth(monthStr = "") {
-  const d = new Date();
+function isCurrentMonth(
+  monthStr=""
+){
+  const d =
+    new Date();
 
   const names = [
     "JAN","FEB","MAR","APR","MAY","JUN",
@@ -182,27 +248,62 @@ function isCurrentMonth(monthStr = "") {
     " " +
     d.getFullYear();
 
-  return monthStr === cur;
+  return monthStr===cur;
 }
 
-function getMonthDays(monthStr = "") {
-  const parts = monthStr.split(" ");
+function getMonthDays(
+  monthStr=""
+){
+  const p =
+    monthStr.split(" ");
 
-  const mon = parts[0];
-  const year = +parts[1];
+  const mon =
+    p[0];
 
-  const months = {
+  const year =
+    +p[1] ||
+    new Date()
+      .getFullYear();
+
+  const idx = {
     JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,
     JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11
-  };
+  }[mon];
 
-  const idx = months[mon];
-
-  if (idx === undefined) return 30;
+  if(idx===undefined)
+    return 30;
 
   return new Date(
     year,
-    idx + 1,
+    idx+1,
     0
   ).getDate();
+}
+
+/* ----------------------------------- */
+
+let done=false;
+
+function injectCss(){
+  if(done)return;
+  done=true;
+
+  const s=
+    document.createElement(
+      "style"
+    );
+
+  s.textContent=`
+    .load-more-btn{
+      margin:12px auto;
+      display:block;
+      padding:10px 18px;
+      border:none;
+      border-radius:10px;
+      font-weight:700;
+      cursor:pointer;
+    }
+  `;
+
+  document.head.appendChild(s);
 }
