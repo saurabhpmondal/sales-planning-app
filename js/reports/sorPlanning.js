@@ -1,222 +1,168 @@
-// NEW FILE
+// FULL REPLACEMENT FILE
 // FILE: js/reports/sorPlanning.js
 
-import { buildReportData } from "../engines/reportEngine.js";
-import { createKpiGrid } from "../components/kpiCards.js";
+import { getSorPlanningRows } from "../engines/sorPlanningEngine.js";
 import { createTable } from "../components/table.js";
-import { getSorPlanRow } from "../engines/planningEngine.js";
 
 /* -----------------------------------
    SOR PLANNING REPORT
+   - Lazy load
+   - Fast render
 ----------------------------------- */
+
+const PAGE_SIZE = 50;
+let page = 1;
 
 export function renderSorPlanning({
   el,
   state
 }) {
-  const data =
-    buildReportData(
-      state.store,
-      state.filters
-    );
+  autoApplyRolling30(
+    state
+  );
 
   const rows =
-    buildRows(
-      data,
-      state.store
+    getSorPlanningRows({
+      store:
+        state.store,
+      filters:
+        state.filters
+    });
+
+  const visible =
+    rows.slice(
+      0,
+      PAGE_SIZE * page
     );
 
   el.className =
-    "report-page planning-table";
+    "report-page";
 
-  el.appendChild(
-    createKpiGrid([
-      {
-        label:
-          "Shipment Qty",
-        value:
-          total(
-            rows,
-            "shipmentQty"
-          ),
-        icon: "🚚"
-      },
-      {
-        label:
-          "Recall Qty",
-        value:
-          total(
-            rows,
-            "recallQty"
-          ),
-        icon: "↩"
-      },
-      {
-        label:
-          "Ship Styles",
-        value:
-          rows.filter(
-            (r) =>
-              r.shipmentQty >
-              0
-          ).length,
-        icon: "📦"
-      },
-      {
-        label:
-          "Recall Styles",
-        value:
-          rows.filter(
-            (r) =>
-              r.recallQty >
-              0
-          ).length,
-        icon: "📤"
-      }
-    ])
-  );
+  el.innerHTML = "";
 
   el.appendChild(
     createTable({
-      title:
-        "SOR Planning",
-      meta: `${rows.length} styles`,
-      columns:
-        getColumns(),
-      rows,
-      minWidth: 2400
+      title:"SOR Planning",
+      meta:`${visible.length}/${rows.length} styles`,
+      mode:"grid",
+      minWidth:1700,
+      columns:cols(),
+      rows:visible
     })
   );
-}
 
-/* -----------------------------------
-   BUILD ROWS
------------------------------------ */
+  if(
+    visible.length <
+    rows.length
+  ){
+    const btn =
+      document.createElement(
+        "button"
+      );
 
-function buildRows(
-  data,
-  store
-) {
-  const rows = [];
+    btn.className =
+      "load-more-btn";
 
-  Object.keys(
-    data.maps
-      .salesByStyle
-  ).forEach(
-    (styleId) => {
-      const pm =
-        store.lookups
-          .productByStyle[
-          styleId
-        ] || {};
+    btn.textContent =
+      "Load More";
 
-      const gross =
-        data.maps
-          .salesByStyle[
-          styleId
-        ]
-          .grossUnits ||
-        0;
-
-      const returns =
-        data.maps
-          .returnsByStyle[
-          styleId
-        ] || 0;
-
-      const drr =
-        data.maps
-          .drrByStyle[
-          styleId
-        ] || 0;
-
-      const stock =
-        data.maps
-          .sorStockByStyle[
-          styleId
-        ] || 0;
-
-      const plan =
-        getSorPlanRow({
-          gross,
-          returns,
-          drr,
-          stock
+    btn.onclick =
+      ()=>{
+        page++;
+        renderSorPlanning({
+          el,
+          state
         });
+      };
 
-      rows.push({
-        "#":
-          rows.length +
-          1,
-        styleId,
-        erpSku:
-          pm.erpSku ||
-          "",
-        erpStatus:
-          pm.status ||
-          "",
-        brand:
-          pm.brand ||
-          "",
-        rating: 0,
-        ...plan
-      });
-    }
-  );
+    el.appendChild(btn);
+  }
 
-  rows.sort(
-    (a, b) =>
-      b.shipmentQty -
-      a.shipmentQty
-  );
-
-  rows.forEach(
-    (row, i) =>
-      (row["#"] =
-        i + 1)
-  );
-
-  return rows;
+  injectCss();
 }
 
-/* -----------------------------------
-   COLUMNS
------------------------------------ */
+/* ----------------------------------- */
 
-function getColumns() {
+function autoApplyRolling30(
+  state
+){
+  if(
+    state.filters
+      .startDate &&
+    state.filters
+      .endDate
+  ) return;
+
+  const end =
+    new Date();
+
+  const start =
+    new Date();
+
+  start.setDate(
+    end.getDate()-29
+  );
+
+  state.filters
+    .startDate =
+    iso(start);
+
+  state.filters
+    .endDate =
+    iso(end);
+}
+
+function iso(d){
+  return d
+    .toISOString()
+    .slice(0,10);
+}
+
+/* ----------------------------------- */
+
+function cols(){
   return [
-    { key: "#", label: "#", align: "right", format: "number" },
-    { key: "styleId", label: "Style ID" },
-    { key: "erpSku", label: "ERP SKU" },
-    { key: "erpStatus", label: "ERP Status" },
-    { key: "brand", label: "Brand" },
-    { key: "rating", label: "Rating", align: "right", format: "number" },
-    { key: "gross", label: "Gross", align: "right", format: "number" },
-    { key: "returns", label: "Return", align: "right", format: "number" },
-    { key: "net", label: "Net", align: "right", format: "number" },
-    { key: "returnPercent", label: "Return %", align: "right", format: "percent" },
-    { key: "drr", label: "DRR", align: "right", format: "number" },
-    { key: "stock", label: "SOR Stock", align: "right", format: "number" },
-    { key: "sc", label: "SC", align: "right", format: "number" },
-    { key: "shipmentQty", label: "Shipment Qty", align: "right", format: "number" },
-    { key: "recallQty", label: "Recall Qty", align: "right", format: "number" }
+    {key:"styleId",label:"Style"},
+    {key:"erpSku",label:"ERP SKU"},
+    {key:"erpStatus",label:"ERP Status"},
+    {key:"brand",label:"Brand"},
+    {key:"rating",label:"Rating",format:"number"},
+    {key:"grossUnits",label:"Gross",format:"number"},
+    {key:"returnUnits",label:"Return",format:"number"},
+    {key:"net",label:"Net",format:"number"},
+    {key:"returnPercent",label:"Ret%",format:"percent"},
+    {key:"drr",label:"DRR",format:"number"},
+    {key:"stockCol",label:"SOR Stock",format:"number"},
+    {key:"sc",label:"SC",format:"number"},
+    {key:"shipmentQty",label:"Shipment",format:"number"},
+    {key:"recallQty",label:"Recall",format:"number"}
   ];
 }
 
-/* -----------------------------------
-   HELPERS
------------------------------------ */
+/* ----------------------------------- */
 
-function total(
-  rows,
-  key
-) {
-  return rows.reduce(
-    (a, b) =>
-      a +
-      (Number(
-        b[key]
-      ) || 0),
-    0
-  );
+let done=false;
+
+function injectCss(){
+  if(done)return;
+  done=true;
+
+  const s=
+    document.createElement(
+      "style"
+    );
+
+  s.textContent=`
+    .load-more-btn{
+      margin:12px auto;
+      display:block;
+      padding:10px 18px;
+      border:none;
+      border-radius:10px;
+      font-weight:700;
+      cursor:pointer;
+    }
+  `;
+
+  document.head.appendChild(s);
 }
