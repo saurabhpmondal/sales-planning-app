@@ -1,95 +1,75 @@
+// REPLACE FILE
 // FILE: js/core/state.js
 
 /* -----------------------------------
-   GLOBAL APPLICATION STATE
+   GLOBAL APP STATE
 ----------------------------------- */
 
 export const APP_STATE = {
-  /* Data store loaded after boot */
+  /* central store */
   store: null,
 
-  /* Active tab */
-  activeTab: "dashboard",
+  /* default active tab */
+  activeTab:
+    "dashboard",
 
-  /* Global filters */
+  /* dynamic filters */
   filters: {
-    month: "ALL",
+    /* auto set after load */
+    month: "AUTO",
+
+    /* custom day range */
     startDate: "",
     endDate: "",
+
+    /* dropdowns */
     brand: "ALL",
     poType: "ALL",
+
+    /* style / sku search */
     search: ""
   },
 
-  /* Sort memory per report */
-  sorting: {
-    sales: {
-      key: "units",
-      order: "desc"
-    },
-    dayOnDaySale: {
-      key: "styleId",
-      order: "asc"
-    },
-    sjitPlanning: {
-      key: "shipmentQty",
-      order: "desc"
-    },
-    sorPlanning: {
-      key: "shipmentQty",
-      order: "desc"
-    }
-  },
-
-  /* UI state */
+  /* ui helpers */
   ui: {
-    loading: false,
-    darkMode: false
+    loading: true,
+    mobile: false
   }
 };
 
 /* -----------------------------------
-   GETTERS
+   TAB HELPERS
 ----------------------------------- */
-
-export function getState() {
-  return APP_STATE;
-}
-
-export function getFilters() {
-  return APP_STATE.filters;
-}
-
-export function getStore() {
-  return APP_STATE.store;
-}
 
 export function getActiveTab() {
-  return APP_STATE.activeTab;
+  return (
+    APP_STATE.activeTab
+  );
+}
+
+export function setActiveTab(
+  tabId
+) {
+  APP_STATE.activeTab =
+    tabId;
 }
 
 /* -----------------------------------
-   TAB STATE
+   FILTER HELPERS
 ----------------------------------- */
 
-export function setActiveTab(tabId) {
-  APP_STATE.activeTab = tabId;
-}
-
-/* -----------------------------------
-   FILTER STATE
------------------------------------ */
-
-export function setFilters(patch = {}) {
-  APP_STATE.filters = {
-    ...APP_STATE.filters,
-    ...patch
-  };
+export function setFilter(
+  key,
+  value
+) {
+  APP_STATE.filters[
+    key
+  ] = value;
 }
 
 export function resetFilters() {
   APP_STATE.filters = {
-    month: "ALL",
+    month: "AUTO",
     startDate: "",
     endDate: "",
     brand: "ALL",
@@ -99,25 +79,38 @@ export function resetFilters() {
 }
 
 /* -----------------------------------
-   SORTING STATE
+   AUTO MONTH
 ----------------------------------- */
 
-export function setSorting(reportId, key, order = "asc") {
-  APP_STATE.sorting[reportId] = { key, order };
+export function resolveAutoMonth() {
+  if (
+    !APP_STATE.store
+  ) {
+    return "ALL";
+  }
+
+  const months =
+    APP_STATE.store.meta
+      ?.months || [];
+
+  return (
+    months[0] ||
+    "ALL"
+  );
 }
 
-export function getSorting(reportId) {
-  return APP_STATE.sorting[reportId] || null;
-}
+export function getFilters() {
+  const out = {
+    ...APP_STATE.filters
+  };
 
-/* -----------------------------------
-   UI STATE
------------------------------------ */
+  if (
+    out.month ===
+    "AUTO"
+  ) {
+    out.month =
+      resolveAutoMonth();
+  }
 
-export function setLoading(value) {
-  APP_STATE.ui.loading = Boolean(value);
-}
-
-export function setDarkMode(value) {
-  APP_STATE.ui.darkMode = Boolean(value);
+  return out;
 }
