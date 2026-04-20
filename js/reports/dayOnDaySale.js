@@ -6,7 +6,10 @@ import { createTable } from "../components/table.js";
 
 /* -----------------------------------
    DAY ON DAY SALE
-   Compact version
+   FIXED:
+   - Uses filtered rows
+   - Current month only visible days
+   - Compact widths
 ----------------------------------- */
 
 export function renderDayOnDaySale({
@@ -19,9 +22,16 @@ export function renderDayOnDaySale({
       state.filters
     );
 
+  const sales =
+    data.filtered.sales;
+
+  const maxDay =
+    getVisibleDay();
+
   const rows =
     buildRows(
-      data.filtered.sales
+      sales,
+      maxDay
     );
 
   el.className =
@@ -34,10 +44,14 @@ export function renderDayOnDaySale({
       meta:
         `${rows.length} styles`,
       columns:
-        getCols(),
+        getCols(
+          maxDay
+        ),
       rows,
       compact:true,
-      minWidth:1800
+      minWidth:
+        420 +
+        maxDay * 38
     })
   );
 }
@@ -45,56 +59,58 @@ export function renderDayOnDaySale({
 /* ----------------------------------- */
 
 function buildRows(
-  sales=[]
+  sales,
+  maxDay
 ) {
-  const map={};
+  const map = {};
 
-  sales.forEach((r)=>{
-    const id=
+  sales.forEach((r) => {
+    const id =
       r.styleId;
 
-    if(!id)return;
+    if (!id) return;
 
-    if(!map[id]){
-      map[id]={
+    if (!map[id]) {
+      map[id] = {
         styleId:id,
-        total:0
+        mtd:0
       };
 
-      for(
+      for (
         let i=1;
-        i<=31;
+        i<=maxDay;
         i++
-      ){
+      ) {
         map[id][
           "d"+i
-        ]=0;
+        ] = 0;
       }
     }
 
-    const qty=
+    const qty =
       Number(
         r.qty
-      )||0;
+      ) || 0;
 
-    const d=
+    const d =
       Number(
         r.date
-      )||0;
+      ) || 0;
 
-    map[id].total+=qty;
+    map[id].mtd +=
+      qty;
 
-    if(
+    if (
       d>=1 &&
-      d<=31
-    ){
+      d<=maxDay
+    ) {
       map[id][
         "d"+d
-      ]+=qty;
+      ] += qty;
     }
   });
 
-  const divisor=
+  const div =
     Math.max(
       new Date()
       .getDate()-1,
@@ -107,23 +123,24 @@ function buildRows(
   .map((r)=>({
     ...r,
     drr:
-      r.total/
-      divisor
+      r.mtd/div
   }))
   .sort(
     (a,b)=>
-      b.total-a.total
+      b.mtd-a.mtd
   );
 }
 
-function getCols(){
-  const cols=[
+function getCols(
+  maxDay
+) {
+  const cols = [
     {
       key:"styleId",
-      label:"Style ID"
+      label:"Style"
     },
     {
-      key:"total",
+      key:"mtd",
       label:"MTD",
       format:"number"
     },
@@ -134,11 +151,11 @@ function getCols(){
     }
   ];
 
-  for(
+  for (
     let i=1;
-    i<=31;
+    i<=maxDay;
     i++
-  ){
+  ) {
     cols.push({
       key:"d"+i,
       label:String(i),
@@ -147,4 +164,12 @@ function getCols(){
   }
 
   return cols;
+}
+
+function getVisibleDay() {
+  return Math.max(
+    new Date()
+      .getDate()-1,
+    1
+  );
 }
