@@ -1,1 +1,211 @@
-// css/reports.css
+/* FILE: css/reports.css */
+
+/* -----------------------------------
+   REPORT PAGE BASE
+----------------------------------- */
+
+.report-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.report-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.report-header__left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.report-header__title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.report-header__subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.report-header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* -----------------------------------
+   KPI SECTION
+----------------------------------- */
+
+.report-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+/* -----------------------------------
+   2 X 2 TABLE GRID
+----------------------------------- */
+
+.report-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+.report-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+/* -----------------------------------
+   FULL WIDTH BLOCKS
+----------------------------------- */
+
+.report-block {
+  width: 100%;
+}
+
+/* -----------------------------------
+   DAY ON DAY TABLE
+----------------------------------- */
+
+.day-table .data-table {
+  min-width: 1500px;
+}
+
+.day-table .data-table thead th:first-child,
+.day-table .data-table tbody td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--color-surface);
+}
+
+.day-table .data-table thead th:nth-child(2),
+.day-table .data-table tbody td:nth-child(2) {
+  position: sticky;
+  left: 130px;
+  z-index: 3;
+  background: var(--color-surface);
+}
+
+/* -----------------------------------
+   SALES TABLE
+----------------------------------- */
+
+.sales-table .data-table {
+  min-width: 2200px;
+}
+
+/* -----------------------------------
+   PLANNING TABLES
+----------------------------------- */
+
+.planning-table .data-table {
+  min-width: 1800px;
+}
+
+/* -----------------------------------
+   EXPORT CENTER
+----------------------------------- */
+
+.export-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+.export-card {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.export-card__title {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  margin-bottom: var(--space-2);
+}
+
+.export-card__text {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-4);
+}
+
+/* -----------------------------------
+   INSIGHT BANNER
+----------------------------------- */
+
+.insight-banner {
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-soft),
+    var(--color-surface)
+  );
+}
+
+.insight-banner__title {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  margin-bottom: 4px;
+}
+
+.insight-banner__text {
+  font-size: var(--text-sm);
+  color: var(--color-text-soft);
+}
+
+/* -----------------------------------
+   MOBILE
+----------------------------------- */
+
+@media (max-width: 1200px) {
+  .report-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .export-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .report-grid-2,
+  .report-grid-3,
+  .export-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .report-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .report-kpis {
+    grid-template-columns: 1fr;
+  }
+}
