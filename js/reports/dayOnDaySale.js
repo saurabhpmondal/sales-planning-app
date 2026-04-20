@@ -1,12 +1,16 @@
-// NEW FILE
+// REPLACE FILE
 // FILE: js/reports/dayOnDaySale.js
 
 import { buildReportData } from "../engines/reportEngine.js";
 import { createTable } from "../components/table.js";
-import { getDaysInMonth } from "../utils/dates.js";
+import {
+  getDaysInMonth
+} from "../utils/dates.js";
 
 /* -----------------------------------
-   DAY ON DAY SALE REPORT
+   DAY ON DAY SALE
+   Current month = till latest day
+   Past month = full month
 ----------------------------------- */
 
 export function renderDayOnDaySale({
@@ -19,42 +23,44 @@ export function renderDayOnDaySale({
       state.filters
     );
 
-  const salesRows =
+  const rows =
     data.filtered.sales;
 
-  const monthInfo =
-    getActiveMonthInfo(
-      salesRows,
+  const info =
+    getMonthInfo(
+      rows,
       state.filters
     );
 
   const maxDays =
-    getDaysInMonth(
-      monthInfo.month,
-      monthInfo.year
+    getVisibleDays(
+      rows,
+      info.month,
+      info.year
     );
 
-  const rows =
+  const tableRows =
     buildRows(
-      salesRows,
+      rows,
       state.store,
       maxDays
     );
 
   el.className =
-    "report-page day-table";
+    "report-page";
 
   el.appendChild(
     createTable({
       title:
         "Day on Day Sale",
-      meta: `${monthInfo.month} ${monthInfo.year}`,
+      meta: `${info.month} ${info.year}`,
       columns:
-        buildColumns(
+        getColumns(
           maxDays
         ),
-      rows,
-      minWidth: 1800
+      rows:
+        tableRows,
+      minWidth: 2400
     })
   );
 }
@@ -93,8 +99,7 @@ function buildRows(
         erpStatus:
           pm.status ||
           "",
-        monthTotal: 0,
-        drr: 0
+        monthTotal: 0
       };
 
       for (
@@ -152,7 +157,7 @@ function buildRows(
    COLUMNS
 ----------------------------------- */
 
-function buildColumns(
+function getColumns(
   maxDays
 ) {
   const cols = [
@@ -163,7 +168,8 @@ function buildColumns(
         "Style ID"
     },
     {
-      key: "brand",
+      key:
+        "brand",
       label:
         "Brand"
     },
@@ -184,19 +190,19 @@ function buildColumns(
         "monthTotal",
       label:
         "Month Total",
-      format:
-        "number",
       align:
-        "right"
+        "right",
+      format:
+        "number"
     },
     {
       key: "drr",
       label:
         "DRR",
-      format:
-        "number",
       align:
-        "right"
+        "right",
+      format:
+        "number"
     }
   ];
 
@@ -209,10 +215,10 @@ function buildColumns(
       key: `d${i}`,
       label:
         String(i),
-      format:
-        "number",
       align:
-        "right"
+        "right",
+      format:
+        "number"
     });
   }
 
@@ -220,39 +226,86 @@ function buildColumns(
 }
 
 /* -----------------------------------
+   DAY LOGIC
+----------------------------------- */
+
+function getVisibleDays(
+  rows,
+  month,
+  year
+) {
+  const latest =
+    detectLatestMonth(
+      rows
+    );
+
+  const selected =
+    `${month} ${year}`;
+
+  /* current month */
+  if (
+    selected ===
+    latest
+  ) {
+    return Math.max(
+      ...rows.map(
+        (r) =>
+          Number(
+            r.date
+          ) || 1
+      ),
+      1
+    );
+  }
+
+  /* old month */
+  return getDaysInMonth(
+    month,
+    year
+  );
+}
+
+/* -----------------------------------
    MONTH INFO
 ----------------------------------- */
 
-function getActiveMonthInfo(
+function getMonthInfo(
   rows,
   filters
 ) {
-  if (
+  const label =
     filters.month &&
     filters.month !==
-      "ALL"
-  ) {
-    const [
-      month,
-      year
-    ] =
-      filters.month.split(
-        " "
-      );
+      "AUTO"
+      ? filters.month
+      : detectLatestMonth(
+          rows
+        );
 
-    return {
-      month,
-      year:
-        Number(
-          year
-        )
-    };
-  }
+  const [
+    month,
+    year
+  ] =
+    label.split(
+      " "
+    );
 
+  return {
+    month,
+    year:
+      Number(
+        year
+      )
+  };
+}
+
+function detectLatestMonth(
+  rows = []
+) {
   let best = {
     score: 0,
-    month: "APR",
-    year: 2026
+    label:
+      "APR 2026"
   };
 
   rows.forEach((r) => {
@@ -271,19 +324,16 @@ function getActiveMonthInfo(
     ) {
       best = {
         score,
-        month:
-          r.month,
-        year:
-          r.year
+        label: `${r.month} ${r.year}`
       };
     }
   });
 
-  return best;
+  return best.label;
 }
 
 function monthNo(
-  month
+  m
 ) {
   return [
     "JAN",
@@ -298,5 +348,5 @@ function monthNo(
     "OCT",
     "NOV",
     "DEC"
-  ].indexOf(month) + 1;
+  ].indexOf(m) + 1;
 }
