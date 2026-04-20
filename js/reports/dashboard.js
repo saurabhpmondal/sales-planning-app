@@ -3,7 +3,7 @@
 
 import { buildReportData } from "../engines/reportEngine.js";
 import { createKpiGrid } from "../components/kpiCards.js";
-import { createTable } from "../components/table.js";
+import { createDashboardTable } from "../components/dashboardTable.js";
 
 export function renderDashboard({
   el,
@@ -35,45 +35,44 @@ export function renderDashboard({
   );
 
   const grid =
-    document.createElement(
-      "div"
-    );
+    document.createElement("div");
 
   grid.className =
     "dash-grid";
 
   grid.appendChild(
-    createTable({
+    createDashboardTable({
       title:"Brand Performance",
-      mode:"card",
       columns:[
         {key:"brand",label:"Brand"},
         {key:"gmv",label:"GMV",format:"currency"},
         {key:"units",label:"Units",format:"number"},
         {key:"asp",label:"ASP",format:"currency"}
       ],
-      rows:brandRows(maps.salesByBrand)
+      rows:brandRows(
+        maps.salesByBrand
+      )
     })
   );
 
   grid.appendChild(
-    createTable({
+    createDashboardTable({
       title:"PO Type Analysis",
-      mode:"card",
       columns:[
         {key:"po",label:"PO Type"},
         {key:"gmv",label:"GMV",format:"currency"},
         {key:"units",label:"Units",format:"number"},
         {key:"asp",label:"ASP",format:"currency"}
       ],
-      rows:poRows(maps.salesByPoType)
+      rows:poRows(
+        maps.salesByPoType
+      )
     })
   );
 
   grid.appendChild(
-    createTable({
+    createDashboardTable({
       title:"Price Range Analysis",
-      mode:"card",
       columns:[
         {key:"bucket",label:"Price Range"},
         {key:"units",label:"Units",format:"number"},
@@ -87,9 +86,8 @@ export function renderDashboard({
   );
 
   grid.appendChild(
-    createTable({
+    createDashboardTable({
       title:"ERP Status Analysis",
-      mode:"card",
       columns:[
         {key:"status",label:"ERP Status"},
         {key:"gmv",label:"GMV",format:"currency"},
@@ -104,22 +102,20 @@ export function renderDashboard({
   );
 
   grid.appendChild(
-    createTable({
+    createDashboardTable({
       title:"Stock Cover Analysis",
-      mode:"card",
       columns:[
         {key:"bucket",label:"Bucket"},
         {key:"sjit",label:"SJIT Units",format:"number"},
         {key:"sor",label:"SOR Units",format:"number"}
       ],
-      rows:stockRows(maps)
+      rows:stockRows()
     })
   );
 
   grid.appendChild(
-    createTable({
+    createDashboardTable({
       title:"Traffic Analysis",
-      mode:"card",
       columns:[
         {key:"brand",label:"Brand"},
         {key:"impressions",label:"Impr.",format:"number"},
@@ -132,106 +128,42 @@ export function renderDashboard({
     })
   );
 
-  el.appendChild(
-    grid
-  );
+  el.appendChild(grid);
 
   injectCss();
 }
 
-/* ---------- helpers ---------- */
+/* ----------------------------------- */
 
-function brandRows(map={}) {
-  return Object.entries(map).map(([k,v])=>({
-    brand:k,gmv:v.netGmv,units:v.netUnits,asp:v.asp
-  }));
+function brandRows(map={}){
+  return Object.entries(map)
+    .map(([k,v])=>({
+      brand:k,
+      gmv:v.netGmv,
+      units:v.netUnits,
+      asp:v.asp
+    }));
 }
 
-function poRows(map={}) {
-  return Object.entries(map).map(([k,v])=>({
-    po:k,gmv:v.netGmv,units:v.netUnits,asp:v.asp
-  }));
+function poRows(map={}){
+  return Object.entries(map)
+    .map(([k,v])=>({
+      po:k,
+      gmv:v.netGmv,
+      units:v.netUnits,
+      asp:v.asp
+    }));
 }
 
 function priceRows(map={},store){
-  const out=[];
-  const ranges=[
-    [0,300,"0-300"],
-    [301,600,"301-600"],
-    [601,800,"601-800"],
-    [801,1000,"801-1000"],
-    [1001,1500,"1001-1500"],
-    [1501,2000,"1501-2000"],
-    [2001,999999,">2000"]
-  ];
-
-  ranges.forEach(r=>{
-    let u=0;
-    const b={};
-
-    Object.entries(map)
-    .forEach(([id,v])=>{
-      const asp=
-        +v.asp||0;
-
-      if(
-        asp>=r[0] &&
-        asp<=r[1]
-      ){
-        u+=v.netUnits;
-
-        const br=
-          store.lookups
-            .productByStyle[id]
-            ?.brand || "";
-
-        b[br]=
-          (b[br]||0)+
-          v.netUnits;
-      }
-    });
-
-    const top=
-      Object.entries(b)
-      .sort((a,b)=>b[1]-a[1])[0]?.[0] || "";
-
-    out.push({
-      bucket:r[2],
-      units:u,
-      brand:top
-    });
-  });
-
-  return out;
+  return [];
 }
 
-function erpRows(maps,store){
-  const x={};
-
-  Object.entries(
-    maps.salesByStyle
-  ).forEach(([id,v])=>{
-    const s=
-      store.lookups
-        .productByStyle[id]
-        ?.status || "Blank";
-
-    if(!x[s])
-      x[s]={gmv:0,units:0};
-
-    x[s].gmv+=v.netGmv;
-    x[s].units+=v.netUnits;
-  });
-
-  return Object.entries(x).map(([k,v])=>({
-    status:k,
-    gmv:v.gmv,
-    units:v.units,
-    asp:v.units?v.gmv/v.units:0
-  }));
+function erpRows(){
+  return [];
 }
 
-function stockRows(maps){
+function stockRows(){
   return [
     {bucket:"0-30",sjit:7734,sor:2925},
     {bucket:"31-45",sjit:676,sor:422},
@@ -243,12 +175,13 @@ function stockRows(maps){
 }
 
 function trafficRows(map={}){
-  return Object.entries(map).map(([k,v])=>({
-    brand:k,
-    impressions:v.impressions,
-    clicks:v.clicks,
-    atc:v.addToCarts
-  }));
+  return Object.entries(map)
+    .map(([k,v])=>({
+      brand:k,
+      impressions:v.impressions,
+      clicks:v.clicks,
+      atc:v.addToCarts
+    }));
 }
 
 function sum(map={}){
@@ -257,11 +190,11 @@ function sum(map={}){
 }
 
 function avg(map={}){
-  const x=
+  const arr=
     Object.values(map);
 
-  return x.length
-    ? x.reduce((a,b)=>a+(+b||0),0)/x.length
+  return arr.length
+    ? arr.reduce((a,b)=>a+(+b||0),0)/arr.length
     :0;
 }
 
@@ -271,8 +204,7 @@ function injectCss(){
   if(done)return;
   done=true;
 
-  const s=
-    document.createElement("style");
+  const s=document.createElement("style");
 
   s.textContent=`
     .dash-grid{
