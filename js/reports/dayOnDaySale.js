@@ -6,19 +6,18 @@ import { createTable } from "../components/table.js";
 
 /* -----------------------------------
    DAY ON DAY SALE
-   FORWARD BUILD ONLY
-   Keeps:
-   - Lazy load
-   - ERP SKU
-   - ERP Status
-   - Color coding (table.js)
-   Fixes:
-   - Current month = till yesterday
-   - Past month = full month
+   FINAL MERGED VERSION
+   - ERP SKU restored
+   - ERP Status restored
+   - Lazy Load kept
+   - Current month till yesterday
+   - Past month full days
 ----------------------------------- */
 
 const PAGE_SIZE = 50;
 let page = 1;
+
+/* ----------------------------------- */
 
 export function renderDayOnDaySale({
   el,
@@ -63,9 +62,9 @@ export function renderDayOnDaySale({
       meta:`${visible.length}/${rows.length} styles`,
       mode:"grid",
       minWidth:
-        720 + (maxDay * 24),
+        980 + (maxDay * 24),
       columns:
-        getCols(maxDay),
+        getColumns(maxDay),
       rows:visible
     })
   );
@@ -107,10 +106,10 @@ function buildRows(
   store,
   maxDay,
   monthStr
-){
+) {
   const map = {};
 
-  sales.forEach(r=>{
+  sales.forEach((r)=>{
 
     const id =
       r.styleId;
@@ -123,12 +122,14 @@ function buildRows(
 
     if(!map[id]){
 
-      map[id]={
+      map[id] = {
         styleId:id,
         erpSku:
           p.erpSku || "",
-        status:
+
+        erpStatus:
           p.status || "",
+
         mtd:0
       };
 
@@ -170,9 +171,10 @@ function buildRows(
     : maxDay;
 
   return Object.values(map)
-    .map(r=>({
+    .map((r)=>({
       ...r,
-      drr:r.mtd/div
+      drr:
+        r.mtd/div
     }))
     .sort(
       (a,b)=>
@@ -182,14 +184,18 @@ function buildRows(
 
 /* ----------------------------------- */
 
-function getCols(maxDay){
-
+function getColumns(
+  maxDay
+){
   const cols = [
+
     {key:"styleId",label:"Style"},
-    {key:"erpSku",label:"SKU"},
-    {key:"status",label:"Status"},
+    {key:"erpSku",label:"ERP SKU"},
+    {key:"erpStatus",label:"ERP Status"},
+
     {key:"mtd",label:"MTD",format:"number"},
     {key:"drr",label:"DRR",format:"number"}
+
   ];
 
   for(
@@ -267,8 +273,9 @@ function getMonthDays(
     JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11
   }[mon];
 
-  if(idx===undefined)
-    return 31;
+  if(
+    idx===undefined
+  ) return 31;
 
   return new Date(
     year,
@@ -285,7 +292,7 @@ function injectCss(){
   if(done)return;
   done=true;
 
-  const s=
+  const s =
     document.createElement(
       "style"
     );
