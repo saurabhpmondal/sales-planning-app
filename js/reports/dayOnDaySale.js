@@ -6,107 +6,201 @@ import { createTable } from "../components/table.js";
 
 /* -----------------------------------
    DAY ON DAY SALE
-   FIXED:
+   FORWARD BUILD ONLY
+   Keeps:
+   - Lazy load
+   - ERP SKU
+   - ERP Status
+   - Color coding (table.js)
+   Fixes:
    - Current month = till yesterday
    - Past month = full month
 ----------------------------------- */
 
-export function renderDayOnDaySale({ el, state }) {
-  const data = buildReportData(
-    state.store,
-    state.filters
-  );
+const PAGE_SIZE = 50;
+let page = 1;
 
-  const sales = data.filtered.sales || [];
+export function renderDayOnDaySale({
+  el,
+  state
+}) {
+  const data =
+    buildReportData(
+      state.store,
+      state.filters
+    );
 
-  const maxDay = getVisibleDay(
-    state.filters.month
-  );
+  const monthStr =
+    state.filters.month || "";
 
-  const rows = buildRows(
-    sales,
-    maxDay,
-    state.filters.month
-  );
+  const maxDay =
+    getVisibleDay(
+      monthStr
+    );
 
-  el.className = "report-page";
+  const rows =
+    buildRows(
+      data.filtered.sales || [],
+      state.store,
+      maxDay,
+      monthStr
+    );
+
+  const visible =
+    rows.slice(
+      0,
+      PAGE_SIZE * page
+    );
+
+  el.className =
+    "report-page";
+
+  el.innerHTML = "";
 
   el.appendChild(
     createTable({
-      title: "Day on Day Sale",
-      meta: `${rows.length} styles`,
-      compact: true,
-      minWidth: 520 + (maxDay * 34),
-      columns: getCols(maxDay),
-      rows
+      title:"Day on Day Sale",
+      meta:`${visible.length}/${rows.length} styles`,
+      mode:"grid",
+      minWidth:
+        720 + (maxDay * 24),
+      columns:
+        getCols(maxDay),
+      rows:visible
     })
   );
+
+  if (
+    visible.length <
+    rows.length
+  ) {
+    const btn =
+      document.createElement(
+        "button"
+      );
+
+    btn.className =
+      "load-more-btn";
+
+    btn.textContent =
+      "Load More";
+
+    btn.onclick =
+      ()=>{
+        page++;
+        renderDayOnDaySale({
+          el,
+          state
+        });
+      };
+
+    el.appendChild(btn);
+  }
+
+  injectCss();
 }
 
 /* ----------------------------------- */
 
 function buildRows(
   sales,
+  store,
   maxDay,
-  month
-) {
+  monthStr
+){
   const map = {};
 
-  sales.forEach(r => {
-    const id = r.styleId;
-    if (!id) return;
+  sales.forEach(r=>{
 
-    if (!map[id]) {
-      map[id] = {
-        styleId: id,
-        mtd: 0
+    const id =
+      r.styleId;
+
+    if(!id) return;
+
+    const p =
+      store.lookups
+        ?.productByStyle?.[id] || {};
+
+    if(!map[id]){
+
+      map[id]={
+        styleId:id,
+        erpSku:
+          p.erpSku || "",
+        status:
+          p.status || "",
+        mtd:0
       };
 
-      for (let i = 1; i <= maxDay; i++) {
-        map[id]["d" + i] = 0;
+      for(
+        let i=1;
+        i<=maxDay;
+        i++
+      ){
+        map[id]["d"+i]=0;
       }
     }
 
     const qty =
-      Number(r.qty) || 0;
+      +r.qty || 0;
 
     const d =
-      Number(r.date) || 0;
+      +r.date || 0;
 
     map[id].mtd += qty;
 
-    if (d >= 1 && d <= maxDay) {
-      map[id]["d" + d] += qty;
+    if(
+      d>=1 &&
+      d<=maxDay
+    ){
+      map[id]["d"+d]+=qty;
     }
+
   });
 
   const div =
-    isCurrentMonth(month)
-      ? Math.max(new Date().getDate() - 1, 1)
-      : maxDay;
+    isCurrentMonth(
+      monthStr
+    )
+    ? Math.max(
+        new Date()
+          .getDate()-1,
+        1
+      )
+    : maxDay;
 
   return Object.values(map)
-    .map(r => ({
+    .map(r=>({
       ...r,
-      drr: r.mtd / div
+      drr:r.mtd/div
     }))
-    .sort((a, b) => b.mtd - a.mtd);
+    .sort(
+      (a,b)=>
+        b.mtd-a.mtd
+    );
 }
 
 /* ----------------------------------- */
 
-function getCols(maxDay) {
+function getCols(maxDay){
+
   const cols = [
-    { key: "styleId", label: "Style" },
-    { key: "mtd", label: "MTD", format: "number" },
-    { key: "drr", label: "DRR", format: "number" }
+    {key:"styleId",label:"Style"},
+    {key:"erpSku",label:"SKU"},
+    {key:"status",label:"Status"},
+    {key:"mtd",label:"MTD",format:"number"},
+    {key:"drr",label:"DRR",format:"number"}
   ];
 
-  for (let i = 1; i <= maxDay; i++) {
+  for(
+    let i=1;
+    i<=maxDay;
+    i++
+  ){
     cols.push({
-      key: "d" + i,
-      label: String(i),
-      format: "number"
+      key:"d"+i,
+      label:String(i),
+      format:"number"
     });
   }
 
@@ -115,38 +209,31 @@ function getCols(maxDay) {
 
 /* ----------------------------------- */
 
-function getVisibleDay(monthStr = "") {
-  if (isCurrentMonth(monthStr)) {
+function getVisibleDay(
+  monthStr=""
+){
+  if(
+    isCurrentMonth(
+      monthStr
+    )
+  ){
     return Math.max(
-      new Date().getDate() - 1,
+      new Date()
+        .getDate()-1,
       1
     );
   }
 
-  const parts =
-    monthStr.split(" ");
-
-  const mon = parts[0];
-  const year = +parts[1];
-
-  const months = {
-    JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,
-    JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11
-  };
-
-  const idx = months[mon];
-
-  if (idx === undefined) return 31;
-
-  return new Date(
-    year,
-    idx + 1,
-    0
-  ).getDate();
+  return getMonthDays(
+    monthStr
+  );
 }
 
-function isCurrentMonth(monthStr = "") {
-  const d = new Date();
+function isCurrentMonth(
+  monthStr=""
+){
+  const d =
+    new Date();
 
   const names = [
     "JAN","FEB","MAR","APR","MAY","JUN",
@@ -158,5 +245,62 @@ function isCurrentMonth(monthStr = "") {
     " " +
     d.getFullYear();
 
-  return monthStr === cur;
+  return monthStr===cur;
+}
+
+function getMonthDays(
+  monthStr=""
+){
+  const p =
+    monthStr.split(" ");
+
+  const mon =
+    p[0];
+
+  const year =
+    +p[1] ||
+    new Date()
+      .getFullYear();
+
+  const idx = {
+    JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,
+    JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11
+  }[mon];
+
+  if(idx===undefined)
+    return 31;
+
+  return new Date(
+    year,
+    idx+1,
+    0
+  ).getDate();
+}
+
+/* ----------------------------------- */
+
+let done=false;
+
+function injectCss(){
+  if(done)return;
+  done=true;
+
+  const s=
+    document.createElement(
+      "style"
+    );
+
+  s.textContent=`
+    .load-more-btn{
+      margin:12px auto;
+      display:block;
+      padding:10px 18px;
+      border:none;
+      border-radius:10px;
+      font-weight:700;
+      cursor:pointer;
+    }
+  `;
+
+  document.head.appendChild(s);
 }
