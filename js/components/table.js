@@ -4,11 +4,7 @@
 import { formatCurrency } from "../utils/format.js";
 
 /* -----------------------------------
-   WIDTH PRIORITY TABLE SYSTEM
-   Goal:
-   - Dashboard tables fit cards
-   - Less ugly scrollers
-   - Better readability
+   ULTRA COMPACT WIDTH PASS
 ----------------------------------- */
 
 export function createTable({
@@ -20,22 +16,15 @@ export function createTable({
   minWidth = ""
 } = {}) {
   const box =
-    document.createElement(
-      "div"
-    );
+    document.createElement("div");
 
   box.className =
     "table-card";
 
   box.innerHTML = `
     <div class="table-toolbar">
-      <div class="table-title">
-        ${title}
-      </div>
-
-      <div class="table-meta">
-        ${meta}
-      </div>
+      <div class="table-title">${title}</div>
+      <div class="table-meta">${meta}</div>
     </div>
 
     <div class="table-scroll">
@@ -48,10 +37,10 @@ export function createTable({
               minWidth
             )
           : `
-          <div class="table-empty">
-            No data available
-          </div>
-        `
+        <div class="table-empty">
+          No data available
+        </div>
+      `
       }
     </div>
   `;
@@ -71,11 +60,7 @@ function render(
 ) {
   return `
     <table
-      class="data-table ${
-        compact
-          ? "data-table--compact"
-          : ""
-      }"
+      class="data-table"
       ${
         minWidth
           ? `style="min-width:${minWidth}px"`
@@ -87,17 +72,9 @@ function render(
           ${cols
             .map(
               (c) => `
-            <th
-              style="width:${colW(
-                c
-              )}px"
-              class="${
-                c.align
-                  ? "t-" +
-                    c.align
-                  : ""
-              }"
-            >
+            <th style="width:${w(
+              c
+            )}px">
               ${c.label}
             </th>
           `
@@ -114,21 +91,11 @@ function render(
             ${cols
               .map(
                 (c) => `
-              <td
-                style="width:${colW(
-                  c
-                )}px"
-                class="${
-                  c.align
-                    ? "t-" +
-                      c.align
-                    : ""
-                }"
-              >
+              <td style="width:${w(
+                c
+              )}px">
                 ${fmt(
-                  row[
-                    c.key
-                  ],
+                  row[c.key],
                   c.format
                 )}
               </td>
@@ -145,95 +112,93 @@ function render(
 }
 
 /* -----------------------------------
-   COLUMN WIDTH LOGIC
+   WIDTH ENGINE
 ----------------------------------- */
 
-function colW(c) {
+function w(c) {
   const k =
     String(
       c.key || ""
     ).toLowerCase();
 
-  const l =
-    String(
-      c.label || ""
-    ).toLowerCase();
+  if (
+    /^d\d+$/.test(k)
+  )
+    return 30;
 
   if (
     k.includes(
       "style"
-    ) ||
-    l.includes(
-      "style"
-    )
-  )
-    return 92;
-
-  if (
-    k.includes(
-      "sku"
-    )
-  )
-    return 92;
-
-  if (
-    k.includes(
-      "brand"
-    )
-  )
-    return 105;
-
-  if (
-    k.includes(
-      "status"
-    )
-  )
-    return 105;
-
-  if (
-    k.includes(
-      "bucket"
-    ) ||
-    l.includes(
-      "range"
-    )
-  )
-    return 88;
-
-  if (
-    k.includes(
-      "gmv"
-    )
-  )
-    return 92;
-
-  if (
-    k.includes(
-      "asp"
     )
   )
     return 78;
 
   if (
     k.includes(
-      "units"
+      "sku"
+    )
+  )
+    return 82;
+
+  if (
+    k.includes(
+      "brand"
+    )
+  )
+    return 86;
+
+  if (
+    k.includes(
+      "status"
+    )
+  )
+    return 88;
+
+  if (
+    k.includes(
+      "bucket"
     ) ||
+    k.includes(
+      "range"
+    )
+  )
+    return 72;
+
+  if (
+    k.includes(
+      "gmv"
+    )
+  )
+    return 78;
+
+  if (
+    k.includes(
+      "asp"
+    )
+  )
+    return 60;
+
+  if (
+    k.includes(
+      "unit"
+    )
+  )
+    return 56;
+
+  if (
     k.includes(
       "click"
     ) ||
     k.includes(
-      "impression"
+      "impr"
     ) ||
     k.includes(
       "atc"
     )
   )
-    return 70;
+    return 56;
 
   if (
-    k.includes(
-      "drr"
-    ) ||
     k.includes(
       "ctr"
     ) ||
@@ -242,16 +207,25 @@ function colW(c) {
     ) ||
     k.includes(
       "growth"
+    ) ||
+    k.includes(
+      "drr"
+    ) ||
+    k.includes(
+      "ret"
     )
   )
-    return 64;
+    return 54;
 
   if (
-    /^d\d+$/.test(k)
+    k.includes(
+      "rank"
+    ) ||
+    k === "#"
   )
     return 38;
 
-  return 80;
+  return 62;
 }
 
 /* ----------------------------------- */
@@ -285,7 +259,7 @@ function fmt(
     ).toLocaleString(
       "en-IN",
       {
-        maximumFractionDigits: 1
+        maximumFractionDigits:1
       }
     );
   }
@@ -332,19 +306,20 @@ function injectCss() {
     }
 
     .table-toolbar{
-      padding:10px 12px;
+      padding:8px 10px;
       display:flex;
       justify-content:space-between;
+      align-items:center;
       border-bottom:1px solid #eef2f7;
     }
 
     .table-title{
-      font-size:13px;
+      font-size:12px;
       font-weight:800;
     }
 
     .table-meta{
-      font-size:10px;
+      font-size:9px;
       color:#64748b;
       font-weight:700;
     }
@@ -357,12 +332,12 @@ function injectCss() {
       width:100%;
       border-collapse:collapse;
       table-layout:fixed;
-      font-size:11px;
+      font-size:10px;
     }
 
     .data-table th{
       background:#f8fafc;
-      padding:7px 4px;
+      padding:5px 2px;
       text-align:center;
       white-space:nowrap;
       border-bottom:1px solid #e5e7eb;
@@ -370,12 +345,12 @@ function injectCss() {
     }
 
     .data-table td{
-      padding:6px 4px;
+      padding:4px 2px;
       text-align:center;
       white-space:nowrap;
-      border-bottom:1px solid #f1f5f9;
       overflow:hidden;
       text-overflow:ellipsis;
+      border-bottom:1px solid #f1f5f9;
       font-weight:600;
     }
 
@@ -384,7 +359,7 @@ function injectCss() {
     }
 
     .table-empty{
-      padding:18px;
+      padding:14px;
       text-align:center;
       color:#64748b;
       font-weight:700;
