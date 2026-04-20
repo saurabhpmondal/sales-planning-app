@@ -1,0 +1,1 @@
+// js/config/tabsConfig.js

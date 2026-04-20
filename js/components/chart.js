@@ -1,0 +1,1 @@
+// js/components/chart.js

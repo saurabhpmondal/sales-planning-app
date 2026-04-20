@@ -1,0 +1,1 @@
+// js/components/table.js
