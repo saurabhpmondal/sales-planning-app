@@ -2,8 +2,9 @@
 // FILE: js/engines/growthEngine.js
 
 /* -----------------------------------
-   GROWTH ENGINE
-   Month vs Previous Month
+   FINAL GROWTH ENGINE
+   Projected Current Month GMV
+   vs Previous Month GMV
 ----------------------------------- */
 
 export function getGrowthByStyle(
@@ -31,13 +32,26 @@ export function getGrowthByStyle(
     );
 
   const prev =
-    previousMonth(
+    getPrev(
       month,
       year
     );
 
-  const curMap = {};
-  const prevMap = {};
+  const daysElapsed =
+    Math.max(
+      new Date()
+        .getDate() - 1,
+      1
+    );
+
+  const daysMonth =
+    getMonthDays(
+      month,
+      year
+    );
+
+  const cur = {};
+  const old = {};
 
   salesRows.forEach((r) => {
     const id =
@@ -45,9 +59,9 @@ export function getGrowthByStyle(
 
     if (!id) return;
 
-    const qty =
+    const gmv =
       Number(
-        r.qty
+        r.finalAmount
       ) || 0;
 
     if (
@@ -57,9 +71,9 @@ export function getGrowthByStyle(
         r.year
       ) === year
     ) {
-      curMap[id] =
-        (curMap[id] ||
-          0) + qty;
+      cur[id] =
+        (cur[id] || 0) +
+        gmv;
     }
 
     if (
@@ -70,9 +84,9 @@ export function getGrowthByStyle(
       ) ===
         prev.year
     ) {
-      prevMap[id] =
-        (prevMap[id] ||
-          0) + qty;
+      old[id] =
+        (old[id] || 0) +
+        gmv;
     }
   });
 
@@ -80,30 +94,35 @@ export function getGrowthByStyle(
   const ids =
     new Set([
       ...Object.keys(
-        curMap
+        cur
       ),
       ...Object.keys(
-        prevMap
+        old
       )
     ]);
 
   ids.forEach((id) => {
-    const cur =
-      curMap[id] || 0;
+    const mtd =
+      cur[id] || 0;
 
-    const old =
-      prevMap[id] || 0;
+    const prevGmv =
+      old[id] || 0;
 
-    if (!old) {
+    const proj =
+      (mtd /
+        daysElapsed) *
+      daysMonth;
+
+    if (!prevGmv) {
       out[id] =
-        cur
+        proj
           ? 100
           : 0;
     } else {
       out[id] =
-        ((cur -
-          old) /
-          old) *
+        ((proj -
+          prevGmv) /
+          prevGmv) *
         100;
     }
   });
@@ -111,44 +130,48 @@ export function getGrowthByStyle(
   return out;
 }
 
-/* -----------------------------------
-   HELPERS
------------------------------------ */
+/* ----------------------------------- */
 
-function previousMonth(
+function getPrev(
   month,
   year
 ) {
   const arr = [
-    "JAN",
-    "FEB",
-    "MAR",
-    "APR",
-    "MAY",
-    "JUN",
-    "JUL",
-    "AUG",
-    "SEP",
-    "OCT",
-    "NOV",
-    "DEC"
+    "JAN","FEB","MAR","APR",
+    "MAY","JUN","JUL","AUG",
+    "SEP","OCT","NOV","DEC"
   ];
 
-  let idx =
+  let i =
     arr.indexOf(
       month
-    );
+    ) - 1;
 
-  idx--;
-
-  if (idx < 0) {
-    idx = 11;
+  if (i < 0) {
+    i = 11;
     year--;
   }
 
   return {
     month:
-      arr[idx],
+      arr[i],
     year
   };
+}
+
+function getMonthDays(
+  month,
+  year
+) {
+  const map = {
+    JAN:1,FEB:2,MAR:3,APR:4,
+    MAY:5,JUN:6,JUL:7,AUG:8,
+    SEP:9,OCT:10,NOV:11,DEC:12
+  };
+
+  return new Date(
+    year,
+    map[month],
+    0
+  ).getDate();
 }
