@@ -1,1 +1,177 @@
-// css/layout.css
+/* FILE: css/layout.css */
+
+/* -----------------------------------
+   APP LAYOUT / SHELL STRUCTURE
+----------------------------------- */
+
+/* Root shell */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* -----------------------------------
+   HEADER
+----------------------------------- */
+
+.app-header-wrap {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  background: rgba(248, 250, 252, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .app-header-wrap {
+  background: rgba(2, 6, 23, 0.92);
+}
+
+.app-header {
+  height: var(--header-height);
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* -----------------------------------
+   FILTERS BAR
+----------------------------------- */
+
+.filters-wrap {
+  position: sticky;
+  top: var(--header-height);
+  z-index: var(--z-filters);
+  background: rgba(248, 250, 252, 0.94);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .filters-wrap {
+  background: rgba(2, 6, 23, 0.94);
+}
+
+.filters-bar {
+  min-height: var(--filters-height);
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-5);
+
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr)) minmax(220px, 320px);
+  gap: var(--space-3);
+  align-items: center;
+}
+
+/* -----------------------------------
+   TABS BAR
+----------------------------------- */
+
+.tabs-wrap {
+  position: sticky;
+  top: calc(var(--header-height) + var(--filters-height));
+  z-index: var(--z-tabs);
+  background: rgba(248, 250, 252, 0.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .tabs-wrap {
+  background: rgba(2, 6, 23, 0.96);
+}
+
+.tabs-bar {
+  min-height: var(--tabs-height);
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+}
+
+/* Hide scrollbar but keep scroll */
+.tabs-bar::-webkit-scrollbar {
+  height: 0;
+}
+
+/* -----------------------------------
+   MAIN CONTENT
+----------------------------------- */
+
+.app-main {
+  flex: 1;
+  width: 100%;
+}
+
+.app-main-inner {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: var(--space-5);
+}
+
+/* Report section */
+.report-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* -----------------------------------
+   GRID HELPERS
+----------------------------------- */
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+/* KPI grid */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+/* -----------------------------------
+   FOOTER
+----------------------------------- */
+
+.app-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.app-footer-inner {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
