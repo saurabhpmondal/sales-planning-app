@@ -4,8 +4,11 @@
 import { formatCurrency } from "../utils/format.js";
 
 /* -----------------------------------
-   COMPACT TABLE UI
-   Less padding / less scroll
+   WIDTH PRIORITY TABLE SYSTEM
+   Goal:
+   - Dashboard tables fit cards
+   - Less ugly scrollers
+   - Better readability
 ----------------------------------- */
 
 export function createTable({
@@ -29,6 +32,7 @@ export function createTable({
       <div class="table-title">
         ${title}
       </div>
+
       <div class="table-meta">
         ${meta}
       </div>
@@ -57,9 +61,7 @@ export function createTable({
   return box;
 }
 
-/* -----------------------------------
-   HTML
------------------------------------ */
+/* ----------------------------------- */
 
 function render(
   cols,
@@ -85,12 +87,17 @@ function render(
           ${cols
             .map(
               (c) => `
-            <th class="${
-              c.align
-                ? "t-" +
-                  c.align
-                : ""
-            }">
+            <th
+              style="width:${colW(
+                c
+              )}px"
+              class="${
+                c.align
+                  ? "t-" +
+                    c.align
+                  : ""
+              }"
+            >
               ${c.label}
             </th>
           `
@@ -107,12 +114,17 @@ function render(
             ${cols
               .map(
                 (c) => `
-              <td class="${
-                c.align
-                  ? "t-" +
-                    c.align
-                  : ""
-              }">
+              <td
+                style="width:${colW(
+                  c
+                )}px"
+                class="${
+                  c.align
+                    ? "t-" +
+                      c.align
+                    : ""
+                }"
+              >
                 ${fmt(
                   row[
                     c.key
@@ -133,8 +145,116 @@ function render(
 }
 
 /* -----------------------------------
-   FORMAT
+   COLUMN WIDTH LOGIC
 ----------------------------------- */
+
+function colW(c) {
+  const k =
+    String(
+      c.key || ""
+    ).toLowerCase();
+
+  const l =
+    String(
+      c.label || ""
+    ).toLowerCase();
+
+  if (
+    k.includes(
+      "style"
+    ) ||
+    l.includes(
+      "style"
+    )
+  )
+    return 92;
+
+  if (
+    k.includes(
+      "sku"
+    )
+  )
+    return 92;
+
+  if (
+    k.includes(
+      "brand"
+    )
+  )
+    return 105;
+
+  if (
+    k.includes(
+      "status"
+    )
+  )
+    return 105;
+
+  if (
+    k.includes(
+      "bucket"
+    ) ||
+    l.includes(
+      "range"
+    )
+  )
+    return 88;
+
+  if (
+    k.includes(
+      "gmv"
+    )
+  )
+    return 92;
+
+  if (
+    k.includes(
+      "asp"
+    )
+  )
+    return 78;
+
+  if (
+    k.includes(
+      "units"
+    ) ||
+    k.includes(
+      "click"
+    ) ||
+    k.includes(
+      "impression"
+    ) ||
+    k.includes(
+      "atc"
+    )
+  )
+    return 70;
+
+  if (
+    k.includes(
+      "drr"
+    ) ||
+    k.includes(
+      "ctr"
+    ) ||
+    k.includes(
+      "cvr"
+    ) ||
+    k.includes(
+      "growth"
+    )
+  )
+    return 64;
+
+  if (
+    /^d\d+$/.test(k)
+  )
+    return 38;
+
+  return 80;
+}
+
+/* ----------------------------------- */
 
 function fmt(
   v,
@@ -190,9 +310,7 @@ function fmt(
   );
 }
 
-/* -----------------------------------
-   CSS
------------------------------------ */
+/* ----------------------------------- */
 
 let done = false;
 
@@ -217,7 +335,6 @@ function injectCss() {
       padding:10px 12px;
       display:flex;
       justify-content:space-between;
-      align-items:center;
       border-bottom:1px solid #eef2f7;
     }
 
@@ -239,34 +356,31 @@ function injectCss() {
     .data-table{
       width:100%;
       border-collapse:collapse;
+      table-layout:fixed;
       font-size:11px;
     }
 
     .data-table th{
       background:#f8fafc;
-      padding:7px 6px;
+      padding:7px 4px;
       text-align:center;
-      font-weight:800;
       white-space:nowrap;
       border-bottom:1px solid #e5e7eb;
+      font-weight:800;
     }
 
     .data-table td{
-      padding:6px;
+      padding:6px 4px;
       text-align:center;
       white-space:nowrap;
       border-bottom:1px solid #f1f5f9;
+      overflow:hidden;
+      text-overflow:ellipsis;
       font-weight:600;
     }
 
     .data-table tbody tr:nth-child(even){
       background:#fcfcfd;
-    }
-
-    .data-table--compact th,
-    .data-table--compact td{
-      padding:5px;
-      font-size:10px;
     }
 
     .table-empty{
