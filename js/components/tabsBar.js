@@ -1,69 +1,89 @@
+// FULL REPLACEMENT FILE
 // FILE: js/components/tabsBar.js
 
-import { getEnabledTabs } from "../config/tabsConfig.js";
-import { getActiveTab } from "../core/state.js";
-
 /* -----------------------------------
-   TABS BAR COMPONENT
+   TABS BAR
+   SAFE ADDITIVE VERSION
 ----------------------------------- */
 
 export function createTabsBar() {
-  const el =
-    document.createElement("div");
+  const wrap =
+    document.createElement(
+      "div"
+    );
 
-  el.className = "tabs-bar";
+  wrap.className =
+    "tabs-bar";
 
-  const tabs =
-    getEnabledTabs();
+  wrap.innerHTML = `
+    <button class="tab-btn tab-btn--active" data-tab="dashboard">
+      Dashboard
+    </button>
 
-  const active =
-    getActiveTab();
+    <button class="tab-btn" data-tab="sales">
+      Sales
+    </button>
 
-  el.innerHTML = `
-    <div class="tab-list">
-      ${tabs
-        .map((tab) =>
-          createTabButton(
-            tab,
-            active
-          )
-        )
-        .join("")}
-    </div>
-  `;
+    <button class="tab-btn" data-tab="dayOnDay">
+      Day on Day
+    </button>
 
-  return el;
-}
+    <button class="tab-btn" data-tab="sjitPlanning">
+      SJIT Planning
+    </button>
 
-/* -----------------------------------
-   TAB BUTTON
------------------------------------ */
-
-function createTabButton(
-  tab,
-  activeId
-) {
-  const isActive =
-    tab.id === activeId;
-
-  return `
-    <button
-      class="tab-btn ${
-        isActive
-          ? "tab-btn--active"
-          : ""
-      }"
-      data-tab="${tab.id}"
-      type="button"
-      title="${tab.label}"
-    >
-      <span class="tab-btn__icon">
-        ${tab.icon || "•"}
-      </span>
-
-      <span>
-        ${tab.label}
-      </span>
+    <button class="tab-btn" data-tab="sorPlanning">
+      SOR Planning
     </button>
   `;
+
+  injectCss();
+
+  return wrap;
+}
+
+/* ----------------------------------- */
+
+let done = false;
+
+function injectCss() {
+  if (done) return;
+  done = true;
+
+  const s =
+    document.createElement(
+      "style"
+    );
+
+  s.textContent = `
+    .tabs-bar{
+      display:flex;
+      gap:8px;
+      padding:10px 0;
+      overflow:auto;
+      scrollbar-width:none;
+    }
+
+    .tabs-bar::-webkit-scrollbar{
+      display:none;
+    }
+
+    .tab-btn{
+      border:none;
+      padding:9px 14px;
+      border-radius:10px;
+      white-space:nowrap;
+      font-size:12px;
+      font-weight:700;
+      cursor:pointer;
+      background:#eef2f7;
+    }
+
+    .tab-btn--active{
+      background:#111827;
+      color:#fff;
+    }
+  `;
+
+  document.head.appendChild(s);
 }
