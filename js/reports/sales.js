@@ -1,13 +1,15 @@
-
-// NEW FILE
+// REPLACE FILE
 // FILE: js/reports/sales.js
 
 import { buildReportData } from "../engines/reportEngine.js";
 import { createTable } from "../components/table.js";
-import { formatPercent } from "../utils/format.js";
 
 /* -----------------------------------
    SALES REPORT
+   Fixed:
+   - traffic values loaded immediately
+   - growth %
+   - rankings
 ----------------------------------- */
 
 export function renderSales({
@@ -21,49 +23,46 @@ export function renderSales({
     );
 
   const rows =
-    buildSalesRows(
+    buildRows(
       data,
       state.store
     );
 
   el.className =
-    "report-page sales-table";
+    "report-page";
 
   el.appendChild(
     createTable({
       title:
         "Sales Report",
-      meta: `${rows.length} styles ranked by units`,
+      meta: `${rows.length} styles`,
       columns:
         getColumns(),
       rows,
-      minWidth: 2600
+      minWidth: 3200
     })
   );
 }
 
 /* -----------------------------------
-   BUILD ROWS
+   BUILD
 ----------------------------------- */
 
-function buildSalesRows(
+function buildRows(
   data,
   store
 ) {
-  const {
-    maps
-  } = data;
-
-  const styleIds =
+  const ids =
     Object.keys(
-      maps.salesByStyle
+      data.maps
+        .salesByStyle
     );
 
   const rows =
-    styleIds.map(
+    ids.map(
       (styleId) => {
         const sales =
-          maps
+          data.maps
             .salesByStyle[
             styleId
           ] || {};
@@ -75,34 +74,10 @@ function buildSalesRows(
           ] || {};
 
         const traffic =
-          maps
+          data.maps
             .trafficByStyle[
             styleId
           ] || {};
-
-        const gross =
-          sales.netUnits || 0;
-
-        const ppmp =
-          share(
-            styleId,
-            "PPMP",
-            data
-          );
-
-        const sjit =
-          share(
-            styleId,
-            "SJIT",
-            data
-          );
-
-        const sor =
-          share(
-            styleId,
-            "SOR",
-            data
-          );
 
         return {
           rank: 0,
@@ -113,6 +88,7 @@ function buildSalesRows(
           brand:
             pm.brand ||
             "",
+
           rating:
             traffic.rating ||
             0,
@@ -130,38 +106,52 @@ function buildSalesRows(
             0,
 
           returnPercent:
-            maps
+            data.maps
               .returnPercentByStyle[
               styleId
             ] || 0,
 
           ppmp:
-            ppmp,
+            share(
+              data,
+              styleId,
+              "PPMP"
+            ),
+
           sjit:
-            sjit,
+            share(
+              data,
+              styleId,
+              "SJIT"
+            ),
+
           sor:
-            sor,
+            share(
+              data,
+              styleId,
+              "SOR"
+            ),
 
           growth:
-            maps
+            data.maps
               .growthByStyle[
               styleId
             ] || 0,
 
           demand:
-            maps
+            data.maps
               .drrByStyle[
               styleId
             ] || 0,
 
           sjitStock:
-            maps
+            data.maps
               .sjitStockByStyle[
               styleId
             ] || 0,
 
           sorStock:
-            maps
+            data.maps
               .sorStockByStyle[
               styleId
             ] || 0,
@@ -179,7 +169,8 @@ function buildSalesRows(
             0,
 
           ctr:
-            traffic.ctr || 0,
+            traffic.ctr ||
+            0,
 
           cvr: 0
         };
@@ -206,9 +197,9 @@ function buildSalesRows(
 ----------------------------------- */
 
 function share(
+  data,
   styleId,
-  poType,
-  data
+  poType
 ) {
   const rows =
     data.filtered.sales.filter(
@@ -250,7 +241,7 @@ function share(
 
 function getColumns() {
   return [
-    { key: "rank", label: "Rank", align: "right", format: "number" },
+    { key: "rank", label: "#", align: "right", format: "number" },
     { key: "styleId", label: "Style ID" },
     { key: "erpSku", label: "ERP SKU" },
     { key: "brand", label: "Brand" },
@@ -258,22 +249,18 @@ function getColumns() {
     { key: "gmv", label: "GMV", align: "right", format: "currency" },
     { key: "units", label: "Units", align: "right", format: "number" },
     { key: "asp", label: "ASP", align: "right", format: "currency" },
-    { key: "returnPercent", label: "Return %", align: "right", render: pct },
-    { key: "ppmp", label: "PPMP %", align: "right", render: pct },
-    { key: "sjit", label: "SJIT %", align: "right", render: pct },
-    { key: "sor", label: "SOR %", align: "right", render: pct },
-    { key: "growth", label: "Growth %", align: "right", render: pct },
-    { key: "demand", label: "Demand %", align: "right", format: "number" },
+    { key: "returnPercent", label: "Return %", align: "right", format: "percent" },
+    { key: "ppmp", label: "PPMP %", align: "right", format: "percent" },
+    { key: "sjit", label: "SJIT %", align: "right", format: "percent" },
+    { key: "sor", label: "SOR %", align: "right", format: "percent" },
+    { key: "growth", label: "Growth %", align: "right", format: "percent" },
+    { key: "demand", label: "Demand", align: "right", format: "number" },
     { key: "sjitStock", label: "SJIT Stock", align: "right", format: "number" },
     { key: "sorStock", label: "SOR Stock", align: "right", format: "number" },
     { key: "impressions", label: "Impressions", align: "right", format: "number" },
     { key: "clicks", label: "Clicks", align: "right", format: "number" },
     { key: "atc", label: "ATC", align: "right", format: "number" },
-    { key: "ctr", label: "CTR %", align: "right", render: pct },
-    { key: "cvr", label: "CVR %", align: "right", render: pct }
+    { key: "ctr", label: "CTR %", align: "right", format: "percent" },
+    { key: "cvr", label: "CVR %", align: "right", format: "percent" }
   ];
-}
-
-function pct(v) {
-  return formatPercent(v);
 }
