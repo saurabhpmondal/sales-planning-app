@@ -4,11 +4,9 @@
 import { buildReportData } from "../engines/reportEngine.js";
 import { createKpiGrid } from "../components/kpiCards.js";
 import { createTable } from "../components/table.js";
-import { createChartPlaceholder } from "../components/chart.js";
 
 /* -----------------------------------
-   DASHBOARD
-   Fixed KPI + exact filtered totals
+   PREMIUM DASHBOARD
 ----------------------------------- */
 
 export function renderDashboard({
@@ -33,8 +31,7 @@ export function renderDashboard({
   el.appendChild(
     createKpiGrid([
       {
-        label:
-          "GMV",
+        label: "GMV",
         value:
           summary.netGmv,
         format:
@@ -42,8 +39,7 @@ export function renderDashboard({
         icon: "₹"
       },
       {
-        label:
-          "Units",
+        label: "Units",
         value:
           summary.netUnits,
         icon: "📦"
@@ -92,254 +88,400 @@ export function renderDashboard({
     ])
   );
 
-  /* CHART */
-  el.appendChild(
-    createChartPlaceholder({
-      title:
-        "Date Wise Sales Trend",
-      message:
-        "Chart engine will be connected in next round."
-    })
-  );
+  /* GRID */
+  const grid =
+    document.createElement(
+      "div"
+    );
 
-  /* BRAND TABLE */
-  el.appendChild(
+  grid.className =
+    "dash-grid";
+
+  grid.appendChild(
     createTable({
       title:
         "Brand Performance",
       meta:
-        "Filtered result",
-      columns: [
-        {
-          key:
-            "brand",
-          label:
-            "Brand"
-        },
-        {
-          key:
-            "gmv",
-          label:
-            "GMV",
-          format:
-            "currency",
-          align:
-            "right"
-        },
-        {
-          key:
-            "units",
-          label:
-            "Units",
-          format:
-            "number",
-          align:
-            "right"
-        },
-        {
-          key:
-            "asp",
-          label:
-            "ASP",
-          format:
-            "currency",
-          align:
-            "right"
-        }
-      ],
+        "Top brands",
+      columns: colsA(),
       rows:
-        buildBrandRows(
+        topBrandRows(
           maps.salesByBrand
-        )
+        ),
+      compact: true
     })
   );
 
-  /* PO TABLE */
-  el.appendChild(
+  grid.appendChild(
     createTable({
       title:
         "PO Type Analysis",
       meta:
-        "Filtered result",
-      columns: [
-        {
-          key:
-            "poType",
-          label:
-            "PO Type"
-        },
-        {
-          key:
-            "gmv",
-          label:
-            "GMV",
-          format:
-            "currency",
-          align:
-            "right"
-        },
-        {
-          key:
-            "units",
-          label:
-            "Units",
-          format:
-            "number",
-          align:
-            "right"
-        },
-        {
-          key:
-            "asp",
-          label:
-            "ASP",
-          format:
-            "currency",
-          align:
-            "right"
-        }
-      ],
+        "Sales mix",
+      columns: colsA(),
       rows:
-        buildPoRows(
+        poRows(
           maps.salesByPoType
-        )
+        ),
+      compact: true
     })
   );
 
-  /* TRAFFIC */
-  el.appendChild(
+  grid.appendChild(
+    createTable({
+      title:
+        "Price Range Analysis",
+      meta:
+        "By ASP",
+      columns: colsB(),
+      rows:
+        priceRows(
+          maps.salesByStyle
+        ),
+      compact: true
+    })
+  );
+
+  grid.appendChild(
+    createTable({
+      title:
+        "ERP Status Analysis",
+      meta:
+        "Master status",
+      columns: colsB(),
+      rows:
+        erpRows(
+          state.store
+        ),
+      compact: true
+    })
+  );
+
+  grid.appendChild(
+    createTable({
+      title:
+        "Stock Cover Analysis",
+      meta:
+        "SJIT + SOR",
+      columns: colsB(),
+      rows:
+        stockCoverRows(
+          maps
+        ),
+      compact: true
+    })
+  );
+
+  grid.appendChild(
     createTable({
       title:
         "Traffic Analysis",
       meta:
-        "Live data",
-      columns: [
-        {
-          key:
-            "brand",
-          label:
-            "Brand"
-        },
-        {
-          key:
-            "impressions",
-          label:
-            "Impressions",
-          align:
-            "right",
-          format:
-            "number"
-        },
-        {
-          key:
-            "clicks",
-          label:
-            "Clicks",
-          align:
-            "right",
-          format:
-            "number"
-        },
-        {
-          key:
-            "addToCarts",
-          label:
-            "ATC",
-          align:
-            "right",
-          format:
-            "number"
-        },
-        {
-          key:
-            "ctr",
-          label:
-            "CTR %",
-          align:
-            "right",
-          format:
-            "percent"
-        }
-      ],
+        "Brand level",
+      columns: colsC(),
       rows:
-        buildTrafficRows(
+        trafficRows(
           maps
             .trafficByBrand
-        )
+        ),
+      compact: true
     })
   );
+
+  el.appendChild(
+    grid
+  );
+
+  injectCss();
 }
 
 /* -----------------------------------
-   HELPERS
+   COLUMNS
 ----------------------------------- */
 
-function buildBrandRows(
+function colsA() {
+  return [
+    {
+      key:
+        "name",
+      label:
+        "Name"
+    },
+    {
+      key:
+        "units",
+      label:
+        "Units",
+      align:
+        "center",
+      format:
+        "number"
+    },
+    {
+      key:
+        "gmv",
+      label:
+        "GMV",
+      align:
+        "center",
+      format:
+        "currency"
+    }
+  ];
+}
+
+function colsB() {
+  return [
+    {
+      key:
+        "name",
+      label:
+        "Bucket"
+    },
+    {
+      key:
+        "units",
+      label:
+        "Units",
+      align:
+        "center",
+      format:
+        "number"
+    }
+  ];
+}
+
+function colsC() {
+  return [
+    {
+      key:
+        "name",
+      label:
+        "Brand"
+    },
+    {
+      key:
+        "clicks",
+      label:
+        "Clicks",
+      align:
+        "center",
+      format:
+        "number"
+    },
+    {
+      key:
+        "ctr",
+      label:
+        "CTR %",
+      align:
+        "center",
+      format:
+        "percent"
+    }
+  ];
+}
+
+/* -----------------------------------
+   ROWS
+----------------------------------- */
+
+function topBrandRows(
   map = {}
 ) {
   return Object.entries(
     map
   )
     .map(
-      ([brand, v]) => ({
-        brand,
-        gmv:
-          v.netGmv,
+      ([k, v]) => ({
+        name: k,
         units:
           v.netUnits,
-        asp:
-          v.asp
+        gmv:
+          v.netGmv
       })
     )
     .sort(
       (a, b) =>
         b.units -
         a.units
-    );
-}
-
-function buildPoRows(
-  map = {}
-) {
-  return Object.entries(
-    map
-  )
-    .map(
-      ([poType, v]) => ({
-        poType,
-        gmv:
-          v.netGmv,
-        units:
-          v.netUnits,
-        asp:
-          v.asp
-      })
     )
-    .sort(
-      (a, b) =>
-        b.units -
-        a.units
-    );
+    .slice(0, 8);
 }
 
-function buildTrafficRows(
+function poRows(
   map = {}
 ) {
   return Object.entries(
     map
   ).map(
-    ([brand, v]) => ({
-      brand,
-      impressions:
-        v.impressions,
-      clicks:
-        v.clicks,
-      addToCarts:
-        v.addToCarts,
-      ctr:
-        v.ctr
+    ([k, v]) => ({
+      name: k,
+      units:
+        v.netUnits,
+      gmv:
+        v.netGmv
     })
   );
+}
+
+function priceRows(
+  map = {}
+) {
+  const out = {
+    "0-499": 0,
+    "500-999": 0,
+    "1000-1499": 0,
+    "1500+": 0
+  };
+
+  Object.values(
+    map
+  ).forEach((v) => {
+    const asp =
+      Number(
+        v.asp
+      ) || 0;
+
+    if (asp < 500)
+      out["0-499"] +=
+        v.netUnits;
+    else if (
+      asp < 1000
+    )
+      out[
+        "500-999"
+      ] +=
+        v.netUnits;
+    else if (
+      asp < 1500
+    )
+      out[
+        "1000-1499"
+      ] +=
+        v.netUnits;
+    else
+      out["1500+"] +=
+        v.netUnits;
+  });
+
+  return Object.entries(
+    out
+  ).map(
+    ([k, v]) => ({
+      name: k,
+      units: v
+    })
+  );
+}
+
+function erpRows(
+  store
+) {
+  const map = {};
+
+  (
+    store
+      .productMaster ||
+    []
+  ).forEach((r) => {
+    const k =
+      r.status ||
+      "Blank";
+
+    map[k] =
+      (map[k] || 0) +
+      1;
+  });
+
+  return Object.entries(
+    map
+  ).map(
+    ([k, v]) => ({
+      name: k,
+      units: v
+    })
+  );
+}
+
+function stockCoverRows(
+  maps
+) {
+  let low = 0;
+  let med = 0;
+  let high = 0;
+
+  const ids =
+    Object.keys(
+      maps
+        .salesByStyle
+    );
+
+  ids.forEach((id) => {
+    const stock =
+      (maps
+        .sjitStockByStyle[
+        id
+      ] || 0) +
+      (maps
+        .sorStockByStyle[
+        id
+      ] || 0);
+
+    const drr =
+      maps
+        .drrByStyle[
+        id
+      ] || 1;
+
+    const sc =
+      stock / drr;
+
+    if (sc < 30)
+      low++;
+    else if (
+      sc < 60
+    )
+      med++;
+    else high++;
+  });
+
+  return [
+    {
+      name: "<30",
+      units: low
+    },
+    {
+      name: "30-60",
+      units: med
+    },
+    {
+      name: "60+",
+      units: high
+    }
+  ];
+}
+
+function trafficRows(
+  map = {}
+) {
+  return Object.entries(
+    map
+  )
+    .map(
+      ([k, v]) => ({
+        name: k,
+        clicks:
+          v.clicks,
+        ctr: v.ctr
+      })
+    )
+    .sort(
+      (a, b) =>
+        b.clicks -
+        a.clicks
+    )
+    .slice(0, 8);
 }
 
 function sumMap(
@@ -374,5 +516,40 @@ function avgMap(
       0
     ) /
     vals.length
+  );
+}
+
+/* -----------------------------------
+   CSS
+----------------------------------- */
+
+let done = false;
+
+function injectCss() {
+  if (done) return;
+  done = true;
+
+  const s =
+    document.createElement(
+      "style"
+    );
+
+  s.textContent = `
+    .dash-grid{
+      display:grid;
+      grid-template-columns:
+        repeat(2,minmax(0,1fr));
+      gap:14px;
+    }
+
+    @media(max-width:900px){
+      .dash-grid{
+        grid-template-columns:1fr;
+      }
+    }
+  `;
+
+  document.head.appendChild(
+    s
   );
 }
