@@ -1,223 +1,169 @@
-
-// NEW FILE
+// FULL REPLACEMENT FILE
 // FILE: js/reports/sjitPlanning.js
 
-import { buildReportData } from "../engines/reportEngine.js";
-import { createKpiGrid } from "../components/kpiCards.js";
+import { getSjitPlanningRows } from "../engines/sjitPlanningEngine.js";
 import { createTable } from "../components/table.js";
-import { getSjitPlanRow } from "../engines/planningEngine.js";
 
 /* -----------------------------------
    SJIT PLANNING REPORT
+   - Lazy load
+   - Fast render
 ----------------------------------- */
+
+const PAGE_SIZE = 50;
+let page = 1;
 
 export function renderSjitPlanning({
   el,
   state
 }) {
-  const data =
-    buildReportData(
-      state.store,
-      state.filters
-    );
+  autoApplyRolling30(
+    state
+  );
 
   const rows =
-    buildRows(
-      data,
-      state.store
+    getSjitPlanningRows({
+      store:
+        state.store,
+      filters:
+        state.filters
+    });
+
+  const visible =
+    rows.slice(
+      0,
+      PAGE_SIZE * page
     );
 
   el.className =
-    "report-page planning-table";
+    "report-page";
 
-  el.appendChild(
-    createKpiGrid([
-      {
-        label:
-          "North Ship Qty",
-        value:
-          sum(
-            rows,
-            "northShipQty"
-          ),
-        icon: "⬆"
-      },
-      {
-        label:
-          "South Ship Qty",
-        value:
-          sum(
-            rows,
-            "southShipQty"
-          ),
-        icon: "⬇"
-      },
-      {
-        label:
-          "Total Ship Qty",
-        value:
-          sum(
-            rows,
-            "totalShipQty"
-          ),
-        icon: "🚚"
-      },
-      {
-        label:
-          "Recall Qty",
-        value:
-          sum(
-            rows,
-            "recallQty"
-          ),
-        icon: "↩"
-      }
-    ])
-  );
+  el.innerHTML = "";
 
   el.appendChild(
     createTable({
-      title:
-        "SJIT Planning",
-      meta: `${rows.length} styles`,
-      columns:
-        getColumns(),
-      rows,
-      minWidth: 2600
+      title:"SJIT Planning",
+      meta:`${visible.length}/${rows.length} styles`,
+      mode:"grid",
+      minWidth:1800,
+      columns:cols(),
+      rows:visible
     })
   );
-}
 
-/* -----------------------------------
-   BUILD ROWS
------------------------------------ */
+  if(
+    visible.length <
+    rows.length
+  ){
+    const btn =
+      document.createElement(
+        "button"
+      );
 
-function buildRows(
-  data,
-  store
-) {
-  const rows = [];
+    btn.className =
+      "load-more-btn";
 
-  Object.keys(
-    data.maps
-      .salesByStyle
-  ).forEach(
-    (styleId) => {
-      const pm =
-        store.lookups
-          .productByStyle[
-          styleId
-        ] || {};
+    btn.textContent =
+      "Load More";
 
-      const gross =
-        data.maps
-          .salesByStyle[
-          styleId
-        ]
-          .grossUnits ||
-        0;
-
-      const ret =
-        data.maps
-          .returnsByStyle[
-          styleId
-        ] || 0;
-
-      const drr =
-        data.maps
-          .drrByStyle[
-          styleId
-        ] || 0;
-
-      const stock =
-        data.maps
-          .sjitStockByStyle[
-          styleId
-        ] || 0;
-
-      const plan =
-        getSjitPlanRow({
-          gross,
-          returns: ret,
-          drr,
-          stock
+    btn.onclick =
+      ()=>{
+        page++;
+        renderSjitPlanning({
+          el,
+          state
         });
+      };
 
-      rows.push({
-        "#":
-          rows.length +
-          1,
-        styleId,
-        erpSku:
-          pm.erpSku ||
-          "",
-        erpStatus:
-          pm.status ||
-          "",
-        brand:
-          pm.brand ||
-          "",
-        rating: 0,
-        ...plan
-      });
-    }
-  );
+    el.appendChild(btn);
+  }
 
-  rows.sort(
-    (a, b) =>
-      b.totalShipQty -
-      a.totalShipQty
-  );
-
-  rows.forEach(
-    (r, i) =>
-      (r["#"] =
-        i + 1)
-  );
-
-  return rows;
+  injectCss();
 }
 
-/* -----------------------------------
-   COLUMNS
------------------------------------ */
+/* ----------------------------------- */
 
-function getColumns() {
+function autoApplyRolling30(
+  state
+){
+  if(
+    state.filters
+      .startDate &&
+    state.filters
+      .endDate
+  ) return;
+
+  const end =
+    new Date();
+
+  const start =
+    new Date();
+
+  start.setDate(
+    end.getDate()-29
+  );
+
+  state.filters
+    .startDate =
+    iso(start);
+
+  state.filters
+    .endDate =
+    iso(end);
+}
+
+function iso(d){
+  return d
+    .toISOString()
+    .slice(0,10);
+}
+
+/* ----------------------------------- */
+
+function cols(){
   return [
-    { key: "#", label: "#", align: "right", format: "number" },
-    { key: "styleId", label: "Style ID" },
-    { key: "erpSku", label: "ERP SKU" },
-    { key: "erpStatus", label: "ERP Status" },
-    { key: "brand", label: "Brand" },
-    { key: "rating", label: "Rating", align: "right", format: "number" },
-    { key: "gross", label: "Gross", align: "right", format: "number" },
-    { key: "returns", label: "Return", align: "right", format: "number" },
-    { key: "net", label: "Net", align: "right", format: "number" },
-    { key: "returnPercent", label: "Return %", align: "right", format: "percent" },
-    { key: "drr", label: "DRR", align: "right", format: "number" },
-    { key: "stock", label: "SJIT Stock", align: "right", format: "number" },
-    { key: "sc", label: "SC", align: "right", format: "number" },
-    { key: "northShipQty", label: "North Ship Qty", align: "right", format: "number" },
-    { key: "southShipQty", label: "South Ship Qty", align: "right", format: "number" },
-    { key: "totalShipQty", label: "Total Ship Qty", align: "right", format: "number" },
-    { key: "recallQty", label: "Recall Qty", align: "right", format: "number" }
+    {key:"styleId",label:"Style"},
+    {key:"erpSku",label:"ERP SKU"},
+    {key:"erpStatus",label:"ERP Status"},
+    {key:"brand",label:"Brand"},
+    {key:"rating",label:"Rating",format:"number"},
+    {key:"grossUnits",label:"Gross",format:"number"},
+    {key:"returnUnits",label:"Return",format:"number"},
+    {key:"net",label:"Net",format:"number"},
+    {key:"returnPercent",label:"Ret%",format:"percent"},
+    {key:"zone",label:"Zone"},
+    {key:"drr",label:"DRR",format:"number"},
+    {key:"stockCol",label:"SJIT Stock",format:"number"},
+    {key:"sc",label:"SC",format:"number"},
+    {key:"shipmentQty",label:"Shipment",format:"number"},
+    {key:"recallQty",label:"Recall",format:"number"}
   ];
 }
 
-/* -----------------------------------
-   HELPERS
------------------------------------ */
+/* ----------------------------------- */
 
-function sum(
-  rows,
-  key
-) {
-  return rows.reduce(
-    (a, b) =>
-      a +
-      (Number(
-        b[key]
-      ) || 0),
-    0
-  );
+let done=false;
+
+function injectCss(){
+  if(done)return;
+  done=true;
+
+  const s=
+    document.createElement(
+      "style"
+    );
+
+  s.textContent=`
+    .load-more-btn{
+      margin:12px auto;
+      display:block;
+      padding:10px 18px;
+      border:none;
+      border-radius:10px;
+      font-weight:700;
+      cursor:pointer;
+    }
+  `;
+
+  document.head.appendChild(s);
 }
