@@ -2,13 +2,10 @@
 // FILE: js/reports/exportCenter.js
 
 import { getEnabledExports } from "../config/exportsConfig.js";
-import { createEmptyState } from "../components/emptyState.js";
-import { showToast } from "../components/toast.js";
-
 import { buildReportData } from "../engines/reportEngine.js";
-
 import { createCsvBlob } from "../utils/csv.js";
 import { downloadBlob } from "../utils/download.js";
+import { showToast } from "../components/toast.js";
 
 /* -----------------------------------
    EXPORT CENTER REPORT
@@ -18,35 +15,22 @@ export function renderExportCenter({
   el,
   state
 }) {
-  const exportsList =
+  const exports =
     getEnabledExports();
 
   el.className =
     "report-page";
 
-  if (!exportsList.length) {
-    el.appendChild(
-      createEmptyState({
-        title:
-          "No Exports Enabled",
-        message:
-          "Enable exports from config."
-      })
-    );
-
-    return;
-  }
-
-  const wrap =
+  const wrapper =
     document.createElement(
       "div"
     );
 
-  wrap.className =
+  wrapper.className =
     "export-grid";
 
-  wrap.innerHTML =
-    exportsList
+  wrapper.innerHTML =
+    exports
       .map(
         (item) => `
       <div class="export-card">
@@ -59,11 +43,11 @@ export function renderExportCenter({
         </div>
 
         <button
-          class="header-btn header-btn--primary"
-          data-export="${item.id}"
+          class="filter-btn"
+          data-export-id="${item.id}"
           type="button"
         >
-          Export CSV
+          Export ${item.type.toUpperCase()}
         </button>
       </div>
     `
@@ -71,51 +55,50 @@ export function renderExportCenter({
       .join("");
 
   el.appendChild(
-    wrap
+    wrapper
   );
 
-  bindExports(
-    wrap,
+  bindExportEvents(
+    el,
     state
   );
 }
 
 /* -----------------------------------
-   BIND EVENTS
+   EVENTS
 ----------------------------------- */
 
-function bindExports(
+function bindExportEvents(
   root,
   state
 ) {
-  root.addEventListener(
-    "click",
-    (event) => {
-      const btn =
-        event.target.closest(
-          "[data-export]"
-        );
+  root
+    .querySelectorAll(
+      "[data-export-id]"
+    )
+    .forEach((btn) => {
+      btn.addEventListener(
+        "click",
+        () => {
+          const id =
+            btn.dataset
+              .exportId;
 
-      if (!btn) return;
-
-      const id =
-        btn.dataset
-          .export;
-
-      exportNow(
-        id,
-        state
+          runExport(
+            id,
+            state
+          );
+        }
       );
-    }
-  );
+    });
 }
 
 /* -----------------------------------
-   EXPORT LOGIC
+   EXPORT RUNNER
 ----------------------------------- */
 
-function exportNow(
-  id,
+function runExport(
+  exportId,
   state
 ) {
   const data =
@@ -126,20 +109,35 @@ function exportNow(
 
   let rows = [];
 
-  switch (id) {
+  switch (
+    exportId
+  ) {
+    case "dashboard-summary":
+      rows =
+        buildDashboardRows(
+          data
+        );
+      break;
+
+    case "sales-report":
+      rows =
+        buildSalesRows(
+          data
+        );
+      break;
+
     case "master-data":
       rows =
-        buildMasterDump(
+        buildMasterRows(
           data,
-          state.store
+          state
         );
       break;
 
     default:
       rows =
-        buildMasterDump(
-          data,
-          state.store
+        buildRawRows(
+          data
         );
       break;
   }
@@ -149,9 +147,11 @@ function exportNow(
       rows
     );
 
+  const fileName = `${exportId}-${dateStamp()}.csv`;
+
   downloadBlob(
     blob,
-    `${id}.csv`
+    fileName
   );
 
   showToast(
@@ -161,76 +161,131 @@ function exportNow(
 }
 
 /* -----------------------------------
-   MASTER DATASET
+   DATA BUILDERS
 ----------------------------------- */
 
-function buildMasterDump(
-  data,
-  store
+function buildDashboardRows(
+  data
 ) {
-  return Object.keys(
+  return [
+    {
+      GMV:
+        data.summary
+          .netGmv,
+      Units:
+        data.summary
+          .netUnits,
+      ReturnPercent:
+        data.summary
+          .returnPercent,
+      ReturnUnits:
+        data.summary
+          .returnUnits
+    }
+  ];
+}
+
+function buildSalesRows(
+  data
+) {
+  return Object.entries(
     data.maps
       .salesByStyle
   ).map(
-    (styleId) => {
-      const pm =
-        store.lookups
-          .productByStyle[
-          styleId
-        ] || {};
-
-      const sales =
+    ([styleId, v]) => ({
+      styleId,
+      units:
+        v.netUnits,
+      gmv:
+        v.netGmv,
+      asp: v.asp,
+      returnPercent:
         data.maps
-          .salesByStyle[
+          .returnPercentByStyle[
           styleId
-        ] || {};
-
-      return {
-        styleId,
-        erpSku:
-          pm.erpSku ||
-          "",
-        brand:
-          pm.brand ||
-          "",
-        status:
-          pm.status ||
-          "",
-        units:
-          sales.netUnits ||
-          0,
-        gmv:
-          sales.netGmv ||
-          0,
-        asp:
-          sales.asp ||
-          0,
-        returnPercent:
-          data.maps
-            .returnPercentByStyle[
-            styleId
-          ] || 0,
-        sjitStock:
-          data.maps
-            .sjitStockByStyle[
-            styleId
-          ] || 0,
-        sorStock:
-          data.maps
-            .sorStockByStyle[
-            styleId
-          ] || 0,
-        drr:
-          data.maps
-            .drrByStyle[
-            styleId
-          ] || 0,
-        growth:
-          data.maps
-            .growthByStyle[
-            styleId
-          ] || 0
-      };
-    }
+        ] || 0,
+      sjitStock:
+        data.maps
+          .sjitStockByStyle[
+          styleId
+        ] || 0,
+      sorStock:
+        data.maps
+          .sorStockByStyle[
+          styleId
+        ] || 0
+    })
   );
+}
+
+function buildMasterRows(
+  data,
+  state
+) {
+  return state.store
+    .productMaster.map(
+      (row) => ({
+        styleId:
+          row.styleId,
+        erpSku:
+          row.erpSku,
+        brand:
+          row.brand,
+        articleType:
+          row.articleType,
+        status:
+          row.status,
+        mrp: row.mrp,
+        tp: row.tp,
+        units:
+          data.maps
+            .salesByStyle[
+            row.styleId
+          ]
+            ?.netUnits ||
+          0
+      })
+    );
+}
+
+function buildRawRows(
+  data
+) {
+  return data.filtered.sales.map(
+    (r) => ({
+      styleId:
+        r.styleId,
+      brand:
+        r.brand,
+      qty: r.qty,
+      gmv:
+        r.finalAmount,
+      poType:
+        r.poType,
+      status:
+        r.orderStatus
+    })
+  );
+}
+
+/* -----------------------------------
+   HELPERS
+----------------------------------- */
+
+function dateStamp() {
+  const d =
+    new Date();
+
+  return `${d.getFullYear()}-${String(
+    d.getMonth() +
+      1
+  ).padStart(
+    2,
+    "0"
+  )}-${String(
+    d.getDate()
+  ).padStart(
+    2,
+    "0"
+  )}`;
 }
