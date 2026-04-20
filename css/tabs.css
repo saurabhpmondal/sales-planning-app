@@ -1,1 +1,162 @@
-// css/tabs.css
+/* FILE: css/tabs.css */
+
+/* -----------------------------------
+   TABS BAR
+----------------------------------- */
+
+.tab-list {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: max-content;
+  padding: var(--space-2) 0;
+}
+
+/* -----------------------------------
+   TAB BUTTON
+----------------------------------- */
+
+.tab-btn {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+  transition: var(--ease);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-btn:hover {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.tab-btn--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+  box-shadow: var(--shadow-xs);
+}
+
+.tab-btn--active:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+/* -----------------------------------
+   TAB ICON / BADGE
+----------------------------------- */
+
+.tab-btn__icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tab-btn__badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: inherit;
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-btn:not(.tab-btn--active) .tab-btn__badge {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+/* -----------------------------------
+   SCROLL FADE EDGES
+----------------------------------- */
+
+.tabs-wrap {
+  position: sticky;
+}
+
+.tabs-wrap::before,
+.tabs-wrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 22px;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.tabs-wrap::before {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    var(--color-bg),
+    rgba(255, 255, 255, 0)
+  );
+}
+
+.tabs-wrap::after {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    var(--color-bg),
+    rgba(255, 255, 255, 0)
+  );
+}
+
+[data-theme="dark"] .tabs-wrap::before {
+  background: linear-gradient(
+    to right,
+    #020617,
+    rgba(2, 6, 23, 0)
+  );
+}
+
+[data-theme="dark"] .tabs-wrap::after {
+  background: linear-gradient(
+    to left,
+    #020617,
+    rgba(2, 6, 23, 0)
+  );
+}
+
+/* -----------------------------------
+   TAB PANEL
+----------------------------------- */
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel--active {
+  display: block;
+}
+
+/* -----------------------------------
+   MOBILE
+----------------------------------- */
+
+@media (max-width: 640px) {
+  .tab-btn {
+    height: 38px;
+    padding: 0 14px;
+    font-size: var(--text-xs);
+  }
+
+  .tab-btn__icon {
+    display: none;
+  }
+}
