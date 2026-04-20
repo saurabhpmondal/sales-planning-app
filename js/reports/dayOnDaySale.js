@@ -1,4 +1,4 @@
-// REPLACE FILE
+// FULL REPLACEMENT FILE
 // FILE: js/reports/dayOnDaySale.js
 
 import { buildReportData } from "../engines/reportEngine.js";
@@ -6,217 +6,157 @@ import { createTable } from "../components/table.js";
 
 /* -----------------------------------
    DAY ON DAY SALE
-   - Lazy load 50
-   - ERP SKU
-   - ERP Status
-   - Color logic columns
+   FIXED:
+   - Current month = till yesterday
+   - Past month = full month
 ----------------------------------- */
 
-const PAGE_SIZE = 50;
-let page = 1;
+export function renderDayOnDaySale({ el, state }) {
+  const data = buildReportData(
+    state.store,
+    state.filters
+  );
 
-export function renderDayOnDaySale({
-  el,
-  state
-}) {
-  const data =
-    buildReportData(
-      state.store,
-      state.filters
-    );
+  const sales = data.filtered.sales || [];
 
-  const rows =
-    buildRows(
-      data.filtered.sales,
-      state.store
-    );
+  const maxDay = getVisibleDay(
+    state.filters.month
+  );
 
-  const shown =
-    rows.slice(
-      0,
-      PAGE_SIZE * page
-    );
+  const rows = buildRows(
+    sales,
+    maxDay,
+    state.filters.month
+  );
 
-  const maxDay =
-    getVisibleDay();
-
-  el.className =
-    "report-page";
-
-  el.innerHTML = "";
+  el.className = "report-page";
 
   el.appendChild(
     createTable({
-      title:"Day on Day Sale",
-      meta:`${shown.length}/${rows.length} styles`,
-      mode:"grid",
-      minWidth:
-        650 + maxDay*32,
-      columns:getCols(maxDay),
-      rows:shown
+      title: "Day on Day Sale",
+      meta: `${rows.length} styles`,
+      compact: true,
+      minWidth: 520 + (maxDay * 34),
+      columns: getCols(maxDay),
+      rows
     })
   );
-
-  if (
-    shown.length <
-    rows.length
-  ) {
-    const btn =
-      document.createElement(
-        "button"
-      );
-
-    btn.className =
-      "load-more-btn";
-
-    btn.textContent =
-      "Load More";
-
-    btn.onclick =
-      ()=>{
-        page++;
-        renderDayOnDaySale({
-          el,
-          state
-        });
-      };
-
-    el.appendChild(btn);
-  }
-
-  injectCss();
 }
 
 /* ----------------------------------- */
 
 function buildRows(
   sales,
-  store
+  maxDay,
+  month
 ) {
-  const maxDay =
-    getVisibleDay();
-
   const map = {};
 
-  sales.forEach(r=>{
-    const id =
-      r.styleId;
+  sales.forEach(r => {
+    const id = r.styleId;
+    if (!id) return;
 
-    if(!id)return;
-
-    const p =
-      store.lookups
-        .productByStyle[id] || {};
-
-    if(!map[id]){
-      map[id]={
-        styleId:id,
-        erpSku:
-          p.erpSku || "",
-        status:
-          p.status || "",
-        mtd:0
+    if (!map[id]) {
+      map[id] = {
+        styleId: id,
+        mtd: 0
       };
 
-      for(
-        let i=1;
-        i<=maxDay;
-        i++
-      ){
-        map[id]["d"+i]=0;
+      for (let i = 1; i <= maxDay; i++) {
+        map[id]["d" + i] = 0;
       }
     }
 
-    const q =
-      +r.qty || 0;
+    const qty =
+      Number(r.qty) || 0;
 
     const d =
-      +r.date || 0;
+      Number(r.date) || 0;
 
-    map[id].mtd += q;
+    map[id].mtd += qty;
 
-    if(
-      d>=1 &&
-      d<=maxDay
-    ){
-      map[id]["d"+d]+=q;
+    if (d >= 1 && d <= maxDay) {
+      map[id]["d" + d] += qty;
     }
   });
 
   const div =
-    Math.max(
-      new Date()
-      .getDate()-1,
-      1
-    );
+    isCurrentMonth(month)
+      ? Math.max(new Date().getDate() - 1, 1)
+      : maxDay;
 
   return Object.values(map)
-    .map(r=>({
+    .map(r => ({
       ...r,
-      drr:r.mtd/div
+      drr: r.mtd / div
     }))
-    .sort(
-      (a,b)=>
-        b.mtd-a.mtd
-    );
+    .sort((a, b) => b.mtd - a.mtd);
 }
 
-function getCols(
-  maxDay
-){
+/* ----------------------------------- */
+
+function getCols(maxDay) {
   const cols = [
-    {key:"styleId",label:"Style"},
-    {key:"erpSku",label:"SKU"},
-    {key:"status",label:"Status"},
-    {key:"mtd",label:"MTD",format:"number"},
-    {key:"drr",label:"DRR",format:"number"}
+    { key: "styleId", label: "Style" },
+    { key: "mtd", label: "MTD", format: "number" },
+    { key: "drr", label: "DRR", format: "number" }
   ];
 
-  for(
-    let i=1;
-    i<=maxDay;
-    i++
-  ){
+  for (let i = 1; i <= maxDay; i++) {
     cols.push({
-      key:"d"+i,
-      label:String(i),
-      format:"number"
+      key: "d" + i,
+      label: String(i),
+      format: "number"
     });
   }
 
   return cols;
 }
 
-function getVisibleDay(){
-  return Math.max(
-    new Date()
-      .getDate()-1,
-    1
-  );
+/* ----------------------------------- */
+
+function getVisibleDay(monthStr = "") {
+  if (isCurrentMonth(monthStr)) {
+    return Math.max(
+      new Date().getDate() - 1,
+      1
+    );
+  }
+
+  const parts =
+    monthStr.split(" ");
+
+  const mon = parts[0];
+  const year = +parts[1];
+
+  const months = {
+    JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,
+    JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11
+  };
+
+  const idx = months[mon];
+
+  if (idx === undefined) return 31;
+
+  return new Date(
+    year,
+    idx + 1,
+    0
+  ).getDate();
 }
 
-let done=false;
+function isCurrentMonth(monthStr = "") {
+  const d = new Date();
 
-function injectCss(){
-  if(done)return;
-  done=true;
+  const names = [
+    "JAN","FEB","MAR","APR","MAY","JUN",
+    "JUL","AUG","SEP","OCT","NOV","DEC"
+  ];
 
-  const s=
-    document.createElement(
-      "style"
-    );
+  const cur =
+    names[d.getMonth()] +
+    " " +
+    d.getFullYear();
 
-  s.textContent=`
-    .load-more-btn{
-      margin:12px auto;
-      display:block;
-      padding:10px 18px;
-      border:none;
-      border-radius:10px;
-      font-weight:700;
-      cursor:pointer;
-    }
-  `;
-
-  document.head.appendChild(s);
+  return monthStr === cur;
 }
