@@ -1,13 +1,14 @@
+// REPLACE FILE
 // FILE: js/reports/dashboard.js
 
 import { buildReportData } from "../engines/reportEngine.js";
 import { createKpiGrid } from "../components/kpiCards.js";
 import { createTable } from "../components/table.js";
 import { createChartPlaceholder } from "../components/chart.js";
-import { formatPercent } from "../utils/format.js";
 
 /* -----------------------------------
-   DASHBOARD REPORT
+   DASHBOARD
+   Fixed KPI + exact filtered totals
 ----------------------------------- */
 
 export function renderDashboard({
@@ -28,11 +29,12 @@ export function renderDashboard({
   el.className =
     "report-page";
 
-  /* KPI GRID */
+  /* KPI */
   el.appendChild(
     createKpiGrid([
       {
-        label: "GMV",
+        label:
+          "GMV",
         value:
           summary.netGmv,
         format:
@@ -40,7 +42,8 @@ export function renderDashboard({
         icon: "₹"
       },
       {
-        label: "Units",
+        label:
+          "Units",
         value:
           summary.netUnits,
         icon: "📦"
@@ -93,42 +96,51 @@ export function renderDashboard({
   el.appendChild(
     createChartPlaceholder({
       title:
-        "Date wise Units",
+        "Date Wise Sales Trend",
       message:
-        "Day-wise units chart will render in next phase."
+        "Chart engine will be connected in next round."
     })
   );
 
-  /* TABLE GRID */
+  /* BRAND TABLE */
   el.appendChild(
     createTable({
       title:
         "Brand Performance",
-      meta: "GMV • Units • ASP",
+      meta:
+        "Filtered result",
       columns: [
         {
-          key: "brand",
-          label: "Brand"
+          key:
+            "brand",
+          label:
+            "Brand"
         },
         {
-          key: "gmv",
-          label: "GMV",
+          key:
+            "gmv",
+          label:
+            "GMV",
           format:
             "currency",
           align:
             "right"
         },
         {
-          key: "units",
-          label: "Units",
+          key:
+            "units",
+          label:
+            "Units",
           format:
             "number",
           align:
             "right"
         },
         {
-          key: "asp",
-          label: "ASP",
+          key:
+            "asp",
+          label:
+            "ASP",
           format:
             "currency",
           align:
@@ -136,42 +148,51 @@ export function renderDashboard({
         }
       ],
       rows:
-        brandRows(
+        buildBrandRows(
           maps.salesByBrand
         )
     })
   );
 
+  /* PO TABLE */
   el.appendChild(
     createTable({
       title:
         "PO Type Analysis",
-      meta: "GMV • Units • ASP",
+      meta:
+        "Filtered result",
       columns: [
         {
-          key: "poType",
+          key:
+            "poType",
           label:
             "PO Type"
         },
         {
-          key: "gmv",
-          label: "GMV",
+          key:
+            "gmv",
+          label:
+            "GMV",
           format:
             "currency",
           align:
             "right"
         },
         {
-          key: "units",
-          label: "Units",
+          key:
+            "units",
+          label:
+            "Units",
           format:
             "number",
           align:
             "right"
         },
         {
-          key: "asp",
-          label: "ASP",
+          key:
+            "asp",
+          label:
+            "ASP",
           format:
             "currency",
           align:
@@ -179,62 +200,71 @@ export function renderDashboard({
         }
       ],
       rows:
-        poRows(
+        buildPoRows(
           maps.salesByPoType
         )
     })
   );
 
+  /* TRAFFIC */
   el.appendChild(
     createTable({
       title:
         "Traffic Analysis",
-      meta: "Brand level traffic",
+      meta:
+        "Live data",
       columns: [
         {
-          key: "brand",
-          label: "Brand"
+          key:
+            "brand",
+          label:
+            "Brand"
         },
         {
           key:
             "impressions",
           label:
             "Impressions",
-          format:
-            "number",
           align:
-            "right"
+            "right",
+          format:
+            "number"
         },
         {
-          key: "clicks",
+          key:
+            "clicks",
           label:
             "Clicks",
-          format:
-            "number",
           align:
-            "right"
+            "right",
+          format:
+            "number"
         },
         {
           key:
             "addToCarts",
           label:
             "ATC",
-          format:
-            "number",
           align:
-            "right"
+            "right",
+          format:
+            "number"
         },
         {
-          key: "ctr",
+          key:
+            "ctr",
           label:
             "CTR %",
           align:
-            "right"
+            "right",
+          format:
+            "percent"
         }
       ],
       rows:
-        trafficRows(
-          maps.trafficByBrand
+        buildTrafficRows(
+          maps
+            .trafficByBrand
         )
     })
   );
@@ -244,41 +274,55 @@ export function renderDashboard({
    HELPERS
 ----------------------------------- */
 
-function brandRows(
+function buildBrandRows(
   map = {}
 ) {
   return Object.entries(
     map
-  ).map(
-    ([brand, v]) => ({
-      brand,
-      gmv:
-        v.netGmv,
-      units:
-        v.netUnits,
-      asp: v.asp
-    })
-  );
+  )
+    .map(
+      ([brand, v]) => ({
+        brand,
+        gmv:
+          v.netGmv,
+        units:
+          v.netUnits,
+        asp:
+          v.asp
+      })
+    )
+    .sort(
+      (a, b) =>
+        b.units -
+        a.units
+    );
 }
 
-function poRows(
+function buildPoRows(
   map = {}
 ) {
   return Object.entries(
     map
-  ).map(
-    ([poType, v]) => ({
-      poType,
-      gmv:
-        v.netGmv,
-      units:
-        v.netUnits,
-      asp: v.asp
-    })
-  );
+  )
+    .map(
+      ([poType, v]) => ({
+        poType,
+        gmv:
+          v.netGmv,
+        units:
+          v.netUnits,
+        asp:
+          v.asp
+      })
+    )
+    .sort(
+      (a, b) =>
+        b.units -
+        a.units
+    );
 }
 
-function trafficRows(
+function buildTrafficRows(
   map = {}
 ) {
   return Object.entries(
@@ -293,9 +337,7 @@ function trafficRows(
       addToCarts:
         v.addToCarts,
       ctr:
-        formatPercent(
-          v.ctr
-        )
+        v.ctr
     })
   );
 }
