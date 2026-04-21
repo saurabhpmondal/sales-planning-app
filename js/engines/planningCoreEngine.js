@@ -5,10 +5,8 @@ import { buildReportData } from "./reportEngine.js";
 
 /* -----------------------------------
    SHARED PLANNING CORE ENGINE
-   Final:
-   - Uses existing reportEngine
-   - DRR uses selected filter days
-   - No global state mutation
+   Uses planningDays dropdown:
+   30 / 45 / 60
 ----------------------------------- */
 
 export function getPlanningRows({
@@ -17,18 +15,25 @@ export function getPlanningRows({
   stockType = "sjit",
   enableZone = false
 }) {
-  const data = buildReportData(
-    store,
-    filters
-  );
+  const days =
+    Number(
+      filters.planningDays
+    ) || 30;
+
+  const windowFilters =
+    buildRollingWindow(
+      filters,
+      days
+    );
+
+  const data =
+    buildReportData(
+      store,
+      windowFilters
+    );
 
   const salesRows =
     data.filtered.sales || [];
-
-  const selectedDays =
-    getSelectedDays(
-      filters
-    );
 
   const grouped = {};
 
@@ -92,7 +97,7 @@ export function getPlanningRows({
       finalizeRow(
         row,
         data,
-        selectedDays,
+        days,
         stockType,
         enableZone
       )
@@ -128,8 +133,7 @@ function finalizeRow(
       .returnPercentByStyle?.[id] || 0;
 
   row.drr =
-    row.net > 0 &&
-    days > 0
+    row.net > 0
       ? row.net / days
       : 0;
 
@@ -146,40 +150,30 @@ function finalizeRow(
         row.drr
       : 0;
 
-  const recallFlag =
-    row.sc > 60 ||
-    row.erpStatus !==
-      "Continue" ||
-    row.rating < 3.5 ||
-    row.drr === 0;
-
   const target =
     row.drr * 45;
 
-  row.shipmentQty = 0;
-  row.recallQty = 0;
+  row.shipmentQty =
+    row.sc < 45
+      ? Math.max(
+          Math.round(
+            target -
+            row.stockCol
+          ),
+          0
+        )
+      : 0;
 
-  if (recallFlag) {
-    row.recallQty =
-      row.drr === 0
-        ? row.stockCol
-        : Math.max(
-            Math.round(
-              row.stockCol -
-              target
-            ),
-            0
-          );
-  } else {
-    row.shipmentQty =
-      Math.max(
-        Math.round(
-          target -
-          row.stockCol
-        ),
-        0
-      );
-  }
+  row.recallQty =
+    row.sc > 60
+      ? Math.max(
+          Math.round(
+            row.stockCol -
+            target
+          ),
+          0
+        )
+      : 0;
 
   row.zone =
     enableZone
@@ -193,39 +187,39 @@ function finalizeRow(
 
 /* ----------------------------------- */
 
-function getSelectedDays(
-  filters = {}
+function buildRollingWindow(
+  filters,
+  days
 ) {
-  const s =
-    filters.startDate;
-  const e =
-    filters.endDate;
+  const end =
+    new Date();
 
-  if (!s || !e)
-    return 30;
+  end.setDate(
+    end.getDate() - 1
+  );
 
   const start =
-    new Date(s);
-  const end =
-    new Date(e);
+    new Date(end);
 
-  if (
-    isNaN(start) ||
-    isNaN(end)
-  ) {
-    return 30;
-  }
-
-  const diff =
-    Math.floor(
-      (end - start) /
-        86400000
-    ) + 1;
-
-  return Math.max(
-    diff,
-    1
+  start.setDate(
+    end.getDate() -
+    (days - 1)
   );
+
+  return {
+    ...filters,
+    month: "ALL",
+    startDate:
+      iso(start),
+    endDate:
+      iso(end)
+  };
+}
+
+function iso(d) {
+  return d
+    .toISOString()
+    .slice(0, 10);
 }
 
 /* ----------------------------------- */
@@ -248,8 +242,6 @@ function getTopZone(
 
   return best;
 }
-
-/* ----------------------------------- */
 
 function getZone(
   st = ""
