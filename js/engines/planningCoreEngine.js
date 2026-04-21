@@ -5,49 +5,41 @@ import { buildReportData } from "./reportEngine.js";
 
 /* -----------------------------------
    SHARED PLANNING CORE ENGINE
-   FIXED:
-   - Uses real reportEngine maps
-   - Fix zero stock
-   - Fix zero rating
-   - Fix DRR
-   - Fix returns
+   Stable version:
+   - Uses existing reportEngine
+   - No UI/global filter mutation
+   - Internal 30 day planning logic
+   - SJIT / SOR shared core
 ----------------------------------- */
 
 export function getPlanningRows({
   store,
-  filters,
+  filters = {},
   stockType = "sjit",
   enableZone = false
 }) {
-  const data =
-    buildReportData(
-      store,
-      filters
-    );
+  const data = buildReportData(
+    store,
+    filters
+  );
 
   const salesRows =
     data.filtered.sales || [];
 
-  const days =
-    getSelectedDays(
-      filters
-    );
-
   const grouped = {};
 
-  salesRows.forEach((r) => {
+  salesRows.forEach((row) => {
     const id =
-      r.styleId;
+      row.styleId;
 
     if (!id) return;
 
     if (!grouped[id]) {
       const pm =
-        store
-          ?.lookups
+        store?.lookups
           ?.productByStyle?.[id] || {};
 
-      const tf =
+      const traffic =
         data.maps
           .trafficByStyle?.[id] || {};
 
@@ -60,7 +52,7 @@ export function getPlanningRows({
         brand:
           pm.brand || "",
         rating:
-          +tf.rating || 0,
+          +traffic.rating || 0,
 
         grossUnits: 0,
         returnUnits: 0,
@@ -68,143 +60,128 @@ export function getPlanningRows({
       };
     }
 
-    grouped[id].grossUnits +=
-      +r.qty || 0;
+    const qty =
+      +row.qty || 0;
 
-    const st =
-      r.state || "";
+    grouped[id].grossUnits += qty;
 
     if (
       enableZone &&
-      st
+      row.state
     ) {
-      const z =
-        getZone(st);
+      const zone =
+        getZone(row.state);
 
       grouped[id]
-        .zoneMap[z] =
+        .zoneMap[zone] =
         (
           grouped[id]
-            .zoneMap[z] || 0
-        ) +
-        (+r.qty || 0);
+            .zoneMap[zone] || 0
+        ) + qty;
     }
   });
 
-  const out =
-    Object.values(grouped)
-      .map((row) => {
-        const id =
-          row.styleId;
-
-        row.returnUnits =
-          +data.maps
-            .returnsByStyle?.[id] || 0;
-
-        row.net =
-          row.grossUnits -
-          row.returnUnits;
-
-        row.returnPercent =
-          +data.maps
-            .returnPercentByStyle?.[id] || 0;
-
-        row.drr =
-          +data.maps
-            .drrByStyle?.[id] ||
-          (
-            row.net / days
-          );
-
-        row.stockCol =
-          stockType === "sjit"
-            ? +data.maps
-                .sjitStockByStyle?.[id] || 0
-            : +data.maps
-                .sorStockByStyle?.[id] || 0;
-
-        row.sc =
-          row.drr > 0
-            ? row.stockCol /
-              row.drr
-            : 0;
-
-        const recall =
-          row.sc > 60 ||
-          row.erpStatus !==
-            "Continue" ||
-          row.rating < 3.5 ||
-          row.drr === 0;
-
-        const target =
-          row.drr * 45;
-
-        row.shipmentQty = 0;
-        row.recallQty = 0;
-
-        if (recall) {
-          row.recallQty =
-            row.drr === 0
-              ? row.stockCol
-              : Math.max(
-                  row.stockCol -
-                    target,
-                  0
-                );
-        } else {
-          row.shipmentQty =
-            Math.max(
-              target -
-                row.stockCol,
-              0
-            );
-        }
-
-        row.zone =
-          enableZone
-            ? getTopZone(
-                row.zoneMap
-              )
-            : "";
-
-        return row;
-      })
-      .sort(
-        (a, b) =>
-          b.net - a.net
-      );
-
-  return out;
+  return Object.values(
+    grouped
+  )
+    .map((row) =>
+      finalizeRow(
+        row,
+        data,
+        stockType,
+        enableZone
+      )
+    )
+    .sort(
+      (a, b) =>
+        b.net - a.net
+    );
 }
 
 /* ----------------------------------- */
 
-function getSelectedDays(
-  filters = {}
+function finalizeRow(
+  row,
+  data,
+  stockType,
+  enableZone
 ) {
-  const s =
-    filters.startDate;
-  const e =
-    filters.endDate;
+  const id =
+    row.styleId;
 
-  if (!s || !e)
-    return 30;
+  row.returnUnits =
+    +data.maps
+      .returnsByStyle?.[id] || 0;
 
-  const start =
-    new Date(s);
-  const end =
-    new Date(e);
+  row.net =
+    row.grossUnits -
+    row.returnUnits;
 
-  const diff =
-    Math.floor(
-      (end - start) /
-        86400000
-    ) + 1;
+  row.returnPercent =
+    +data.maps
+      .returnPercentByStyle?.[id] || 0;
 
-  return Math.max(
-    diff,
-    1
-  );
+  row.drr =
+    row.net > 0
+      ? row.net / 30
+      : 0;
+
+  row.stockCol =
+    stockType === "sjit"
+      ? +data.maps
+          .sjitStockByStyle?.[id] || 0
+      : +data.maps
+          .sorStockByStyle?.[id] || 0;
+
+  row.sc =
+    row.drr > 0
+      ? row.stockCol /
+        row.drr
+      : 0;
+
+  const recallFlag =
+    row.sc > 60 ||
+    row.erpStatus !==
+      "Continue" ||
+    row.rating < 3.5 ||
+    row.drr === 0;
+
+  const target =
+    row.drr * 45;
+
+  row.shipmentQty = 0;
+  row.recallQty = 0;
+
+  if (recallFlag) {
+    row.recallQty =
+      row.drr === 0
+        ? row.stockCol
+        : Math.max(
+            Math.round(
+              row.stockCol -
+              target
+            ),
+            0
+          );
+  } else {
+    row.shipmentQty =
+      Math.max(
+        Math.round(
+          target -
+          row.stockCol
+        ),
+        0
+      );
+  }
+
+  row.zone =
+    enableZone
+      ? getTopZone(
+          row.zoneMap
+        )
+      : "";
+
+  return row;
 }
 
 /* ----------------------------------- */
@@ -233,7 +210,7 @@ function getTopZone(
 function getZone(
   st = ""
 ) {
-  const z = {
+  const zones = {
     UP: "North Zone",
     DL: "North Zone",
     HR: "North Zone",
@@ -257,7 +234,7 @@ function getZone(
   };
 
   return (
-    z[st] ||
+    zones[st] ||
     "Other Zone"
   );
 }
