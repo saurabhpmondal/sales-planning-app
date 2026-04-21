@@ -5,11 +5,10 @@ import { buildReportData } from "./reportEngine.js";
 
 /* -----------------------------------
    SHARED PLANNING CORE ENGINE
-   Stable version:
+   Final:
    - Uses existing reportEngine
-   - No UI/global filter mutation
-   - Internal 30 day planning logic
-   - SJIT / SOR shared core
+   - DRR uses selected filter days
+   - No global state mutation
 ----------------------------------- */
 
 export function getPlanningRows({
@@ -25,6 +24,11 @@ export function getPlanningRows({
 
   const salesRows =
     data.filtered.sales || [];
+
+  const selectedDays =
+    getSelectedDays(
+      filters
+    );
 
   const grouped = {};
 
@@ -88,6 +92,7 @@ export function getPlanningRows({
       finalizeRow(
         row,
         data,
+        selectedDays,
         stockType,
         enableZone
       )
@@ -103,6 +108,7 @@ export function getPlanningRows({
 function finalizeRow(
   row,
   data,
+  days,
   stockType,
   enableZone
 ) {
@@ -122,8 +128,9 @@ function finalizeRow(
       .returnPercentByStyle?.[id] || 0;
 
   row.drr =
-    row.net > 0
-      ? row.net / 30
+    row.net > 0 &&
+    days > 0
+      ? row.net / days
       : 0;
 
   row.stockCol =
@@ -182,6 +189,43 @@ function finalizeRow(
       : "";
 
   return row;
+}
+
+/* ----------------------------------- */
+
+function getSelectedDays(
+  filters = {}
+) {
+  const s =
+    filters.startDate;
+  const e =
+    filters.endDate;
+
+  if (!s || !e)
+    return 30;
+
+  const start =
+    new Date(s);
+  const end =
+    new Date(e);
+
+  if (
+    isNaN(start) ||
+    isNaN(end)
+  ) {
+    return 30;
+  }
+
+  const diff =
+    Math.floor(
+      (end - start) /
+        86400000
+    ) + 1;
+
+  return Math.max(
+    diff,
+    1
+  );
 }
 
 /* ----------------------------------- */
