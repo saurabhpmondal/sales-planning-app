@@ -6,17 +6,23 @@ import { createTable } from "../components/table.js";
 
 const PAGE_SIZE = 50;
 let page = 1;
+let selectedDays = 30;
 
 export function renderSorPlanning({ el, state }) {
   const rows = getSorPlanningRows({
     store: state.store,
-    filters: state.filters
+    filters: {
+      ...state.filters,
+      planningDays: selectedDays
+    }
   });
 
   const visible = rows.slice(0, PAGE_SIZE * page);
 
   el.className = "report-page";
   el.innerHTML = "";
+
+  el.appendChild(createToolbar(el, state));
 
   el.appendChild(
     createTable({
@@ -43,6 +49,42 @@ export function renderSorPlanning({ el, state }) {
   }
 
   injectCss();
+}
+
+function createToolbar(el, state) {
+  const wrap = document.createElement("div");
+  wrap.className = "planning-toolbar";
+
+  wrap.innerHTML = `
+    <label class="planning-label">
+      Sales Days
+      <select class="planning-select">
+        <option value="30">30</option>
+        <option value="45">45</option>
+        <option value="60">60</option>
+      </select>
+    </label>
+  `;
+
+  const select =
+    wrap.querySelector("select");
+
+  select.value =
+    String(selectedDays);
+
+  select.onchange = () => {
+    selectedDays =
+      Number(select.value);
+
+    page = 1;
+
+    renderSorPlanning({
+      el,
+      state
+    });
+  };
+
+  return wrap;
 }
 
 function getColumns() {
@@ -72,6 +114,24 @@ function injectCss() {
 
   const style = document.createElement("style");
   style.textContent = `
+    .planning-toolbar{
+      display:flex;
+      justify-content:flex-end;
+      margin-bottom:12px;
+    }
+
+    .planning-label{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      font-weight:700;
+    }
+
+    .planning-select{
+      padding:8px 10px;
+      border-radius:8px;
+    }
+
     .load-more-btn{
       margin:12px auto;
       display:block;
